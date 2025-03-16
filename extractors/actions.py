@@ -1,0 +1,113 @@
+import os
+import yaml
+import argparse
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+import pandas as pd
+import time
+
+# Load configuration from a YAML file
+def load_config():
+    config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../config/settings.yaml")
+    print(f"Loading config from: {config_path}")
+    
+    with open(config_path, "r") as file:
+        return yaml.safe_load(file)
+
+CONFIG = load_config()
+
+# Initialize WebDriver
+def get_driver():
+    options = webdriver.ChromeOptions()
+    options.add_argument("--headless")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--window-size=1920,1080")
+    driver = webdriver.Chrome(options=options)
+    return driver
+
+# Function to extract actions from a page
+def extract_actions(driver, url, date_range, xpaths):
+    actions_data = []
+    
+    WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, xpaths["actions_buttons"])))
+    action_buttons = driver.find_elements(By.XPATH, xpaths["actions_buttons"])
+    
+    for button in action_buttons:
+        try:
+            strategy_text = button.find_element(By.XPATH, "./span[1]").text.strip()
+            strategy = strategy_text + " (action)"
+        except:
+            strategy = "N/A"
+        
+        try:
+            value_text = button.find_element(By.XPATH, "./span[2]").text.strip()
+            value = value_text if value_text.isdigit() else "N/A"
+        except:
+            value = "N/A"
+        
+        collection_time = int(time.time())  # UNIX timestamp
+        page_url = driver.current_url  # Capture current page URL
+        
+        actions_data.append({
+            "date_range": date_range,
+            "strategy": strategy,
+            "value": value,
+            "Original_URL": page_url,
+            "collection_time": collection_time
+        })
+    
+    return actions_data
+
+# Main function to process all URLs
+def scrape_actions(environment):
+    driver = get_driver()
+    all_actions = []
+    xpaths = CONFIG["xpaths"]
+    urls = CONFIG["urls"][environment]
+    
+    for url in urls:
+        print(f"Scraping: {url}")
+        driver.get(url)
+        time.sleep(CONFIG["delays"]["page_load"])
+        
+        year_buttons = driver.find_elements(By.XPATH, xpaths["year_buttons"])
+        if len(year_buttons) < 2:
+            print("Skipping due to missing year buttons")
+            continue
+        
+        # Extract actions for each date range
+        for i, button in enumerate(year_buttons[:2]):
+            button.click()
+            time.sleep(CONFIG["delays"]["data_load"])
+            date_range = button.text.strip()
+            all_actions.extend(extract_actions(driver, url, date_range, xpaths))
+        
+        try:
+            all_time_button = driver.find_element(By.XPATH, xpaths["all_time_button"])
+            all_time_button.click()
+            time.sleep(CONFIG["delays"]["data_load"])
+            date_range = all_time_button.text.strip()
+            all_actions.extend(extract_actions(driver, url, date_range, xpaths))
+        except:
+            print("No all-time button found.")
+    
+    driver.quit()
+    return all_actions
+
+# Run the scraper and export to CSV
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--env", choices=["staging", "dev"], required=True, help="Specify environment: staging or dev")
+    args = parser.parse_args()
+    
+    actions_data = scrape_actions(args.env)
+    output_file = f"actions_{args.env}_data.csv"
+    df = pd.DataFrame(actions_data)
+    df.to_csv(output_file, index=False)
+    print(f"Data saved to {output_file}")
+
+if __name__ == "__main__":
+    main()
