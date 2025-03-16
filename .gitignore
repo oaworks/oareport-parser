@@ -14,7 +14,7 @@ __pycache__/
 .env
 
 # Settings
-settings.py
+settings.yaml
 
 # Logs
 *.log
