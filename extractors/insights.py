@@ -1,5 +1,6 @@
 import os
 import yaml
+import argparse
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -60,12 +61,13 @@ def extract_insights(driver, url, date_range, xpaths):
     return insights_data
 
 # Main function to process all URLs
-def scrape_insights():
+def scrape_insights(environment):
     driver = get_driver()
     all_insights = []
     xpaths = CONFIG["xpaths"]
+    urls = CONFIG["urls"][environment]
     
-    for url in CONFIG["urls"]:
+    for url in urls:
         print(f"Scraping: {url}")
         driver.get(url)
         time.sleep(CONFIG["delays"]["page_load"])
@@ -96,10 +98,15 @@ def scrape_insights():
 
 # Run the scraper and export to CSV
 def main():
-    insights_data = scrape_insights()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--env", choices=["staging", "dev"], required=True, help="Specify environment: staging or dev")
+    args = parser.parse_args()
+    
+    insights_data = scrape_insights(args.env)
+    output_file = f"insights_{args.env}_data.csv"
     df = pd.DataFrame(insights_data)
-    df.to_csv(CONFIG["output_file"], index=False)
-    print(f"Data saved to {CONFIG['output_file']}")
+    df.to_csv(output_file, index=False)
+    print(f"Data saved to {output_file}")
 
 if __name__ == "__main__":
     main()
