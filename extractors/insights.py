@@ -7,6 +7,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import pandas as pd
 import time
+from datetime import datetime
 
 # Load configuration from a YAML file
 def load_config():
@@ -47,7 +48,7 @@ def extract_insights(driver, url, date_range, xpaths):
         except:
             value = "N/A"
         
-        collection_time = int(time.time())  # UNIX timestamp
+        collection_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")  # Human-readable timestamp
         page_url = driver.current_url  # Capture current page URL
         
         insights_data.append({
