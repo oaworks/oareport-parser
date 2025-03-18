@@ -74,26 +74,27 @@ def scrape_insights(environment):
         time.sleep(CONFIG["delays"]["page_load"])
         
         year_buttons = driver.find_elements(By.XPATH, xpaths["year_buttons"])
-        if len(year_buttons) < 2:
-            print("Skipping due to missing year buttons")
-            continue
         
-        # Extract insights for each date range
-        for i, button in enumerate(year_buttons[:2]):
-            button.click()
-            time.sleep(CONFIG["delays"]["data_load"])
-            date_range = button.text.strip()
-            all_insights.extend(extract_insights(driver, url, date_range, xpaths))
-        
-        try:
-            all_time_button = driver.find_element(By.XPATH, xpaths["all_time_button"])
-            all_time_button.click()
-            time.sleep(CONFIG["delays"]["data_load"])
-            date_range = all_time_button.text.strip()
-            all_insights.extend(extract_insights(driver, url, date_range, xpaths))
-        except:
-            print("No all-time button found.")
-    
+        if len(year_buttons) >= 2:
+            # Extract insights for each date range
+            for i, button in enumerate(year_buttons[:2]):
+                button.click()
+                time.sleep(CONFIG["delays"]["data_load"])
+                date_range = button.text.strip()
+                all_insights.extend(extract_insights(driver, url, date_range, xpaths))
+            
+            try:
+                all_time_button = driver.find_element(By.XPATH, xpaths["all_time_button"])
+                all_time_button.click()
+                time.sleep(CONFIG["delays"]["data_load"])
+                date_range = all_time_button.text.strip()
+                all_insights.extend(extract_insights(driver, url, date_range, xpaths))
+            except:
+                print("No all-time button found.")
+        else:
+            print("No year buttons found, extracting without date_range")
+            all_insights.extend(extract_insights(driver, url, "", xpaths))
+            
     driver.quit()
     return all_insights
 
