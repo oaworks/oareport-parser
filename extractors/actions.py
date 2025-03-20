@@ -44,8 +44,8 @@ def extract_actions(driver, url, date_range, xpaths):
             strategy = "N/A"
         
         try:
-            value_text = button.find_element(By.XPATH, "./span[2]").text.strip()
-            value = value_text if value_text.isdigit() else "N/A"
+            value_text = button.find_element(By.XPATH, "./span[2]").text.strip().replace(",", "") # Remove thousands separator
+            value = value_text if value_text.replace(",", "").isdigit() else "N/A"
         except:
             value = "N/A"
         
