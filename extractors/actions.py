@@ -1,6 +1,7 @@
 import os
 import yaml
 import argparse
+import sys
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -8,6 +9,8 @@ from selenium.webdriver.support import expected_conditions as EC
 import pandas as pd
 import time
 from datetime import datetime
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from export.google_sheets import upload_df_to_gsheet
 
 # Load configuration from a YAML file
 def load_config():
@@ -103,12 +106,23 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--env", choices=["staging", "dev"], required=True, help="Specify environment: staging or dev")
     args = parser.parse_args()
-    
+
     actions_data = scrape_actions(args.env)
     output_file = f"actions_{args.env}_data.csv"
     df = pd.DataFrame(actions_data)
     df.to_csv(output_file, index=False)
     print(f"Data saved to {output_file}")
+
+    # Upload to Google Sheets
+    spreadsheet_name = CONFIG["google_sheets"]["sheets"]["actions"][args.env]
+    creds_path = CONFIG["google_sheets"]["creds_file"]
+
+    from export.google_sheets import upload_df_to_gsheet
+    upload_df_to_gsheet(
+        df=df,
+        spreadsheet_name=spreadsheet_name,
+        creds_path=creds_path
+    )
 
 if __name__ == "__main__":
     main()
