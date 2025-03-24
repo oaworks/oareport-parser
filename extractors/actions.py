@@ -1,3 +1,4 @@
+import sys
 import os
 import yaml
 import argparse
@@ -117,7 +118,6 @@ def main():
     spreadsheet_name = CONFIG["google_sheets"]["sheets"]["actions"][args.env]
     creds_path = CONFIG["google_sheets"]["creds_file"]
 
-    from export.google_sheets import upload_df_to_gsheet
     upload_df_to_gsheet(
         df=df,
         spreadsheet_name=spreadsheet_name,
