@@ -50,11 +50,10 @@ This file contains credentials for the Google service account that uploads data 
 4. Click **Create Credentials → Service Account**
 5. Follow the prompts (you can skip role assignment)
 6. After creating the service account:
-   - Go to the account → **Keys** tab → **Add Key → Create new key → JSON**
+   - Go to the account → **Keys** tab → **Add Key** → **Create new key** → **JSON**
 7. Download and save it as `config/google_creds.json`
    - A template is also provided in this repo (`config/google_creds.template.json`)
-   - Simply update the file name to `config/google_creds.json`
-   - Copy-paste to replace the contents of the JSON filed downloaded in Google Cloud Console to this file
+   - Simply update the file name to `config/google_creds.json` and copy-paste to replace the contents of the JSON file downloaded in Google Cloud Console to this file
 8. Share your target Google Sheets with the service account email (e.g. `...@...iam.gserviceaccount.com`), giving it Editor access
 
 ### 2. *`settings.yaml`*
@@ -120,6 +119,6 @@ The current workflow will:
 
 ### Manual run 
 
-Go to GitHub → **Actions → Daily OA.Report Parsing → Run workflow**
+Go to GitHub → **Actions** → **Daily OA.Report Parsing** → **Run workflow**
 
 All four parsers will run manually. All runs, whether failed or successful, will be listed on this page as well. 
