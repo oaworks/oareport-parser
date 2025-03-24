@@ -7,7 +7,7 @@ def upload_df_to_gsheet(df, spreadsheet_name, creds_path, retries=3, delay=10):
     # Define Google Sheets API scope
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 
-    # Authorize client with service account credentials
+    # Authorise client with service account credentials
     creds = ServiceAccountCredentials.from_json_keyfile_name(creds_path, scope)
     client = gspread.authorize(creds)
 
@@ -17,10 +17,17 @@ def upload_df_to_gsheet(df, spreadsheet_name, creds_path, retries=3, delay=10):
 
     # Get all existing rows (check if header exists)
     existing_values = worksheet.get_all_values()
+
+    # If sheet is empty, write headers first
     if not existing_values:
         worksheet.append_row(df.columns.tolist())
 
-    # Convert data frame to list of rows
+    # If sheet is not empty but headers don't match, raise a warning
+    elif existing_values[0] != df.columns.tolist():
+        print("Column headers do not match existing sheet. No data appended.")
+        return
+
+    # Convert dataframe to list of lists
     data_rows = df.values.tolist()
 
     # Retry appending if rate limit is hit

@@ -38,8 +38,14 @@ jobs:
       - name: Run actions parser on live API (staging)
         run: python extractors/actions.py --env staging
 
+      - name: Run explore parser on live API (staging)
+        run: python extractors/explore.py --env staging
+
       - name: Run insights parser on beta API (dev)
         run: python extractors/insights.py --env dev
 
       - name: Run actions parser on beta API (dev)
         run: python extractors/actions.py --env dev
+
+      - name: Run explore parser on beta API (dev)
+        run: python extractors/explore.py --env dev
