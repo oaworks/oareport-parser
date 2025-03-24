@@ -15,18 +15,20 @@ This repo extracts data from OA.Report organisation pages ([`dev`](https://dev.o
 
 ```
 .
-├── config/                      # Configuration files (never commit secrets; both files are in .gitignore)
-│   ├── settings.yaml            # List of parsed URLs, XPaths, output files, Google Sheets mapping
-│   └── google_creds.json        # Google service account credentials
-├── extractors/                  # Main parser scripts
-│   ├── insights.py              # Parses Insights data
-│   ├── explore.py               # Parses Explore data
-│   └── actions.py               # Parses Actions data
-├── export/                      # Google Sheets export handler
-│   └── google_sheets.py         # Uploads data frames to Google Sheets
+├── config/                          # Configuration files (never commit secrets; both files are in .gitignore)
+│   ├── google_creds.json            # Google service account credentials
+│   ├── google_creds.template.json   # Template for google_creds.json — remove .template
+│   ├── settings.yaml                # List of parsed URLs, XPaths, output files, Google Sheets mapping
+│   └── settings.template.yaml       # Template for settings.yaml — remove .template
+├── extractors/                      # Main parser scripts
+│   ├── insights.py                  # Parses Insights data
+│   ├── explore.py                   # Parses Explore data
+│   └── actions.py                   # Parses Actions data
+├── export/                          # Google Sheets export handler
+│   └── google_sheets.py             # Uploads data frames to Google Sheets
 ├── .github/
-│   └── workflows/schedule.yml  # GitHub Actions runner (scheduled daily)
-└── requirements.txt            # Python dependencies
+│   └── workflows/schedule.yml      # GitHub Actions runner (scheduled daily)
+└── requirements.txt                # Python dependencies
 ```
 
 ---
@@ -50,11 +52,10 @@ This file contains credentials for the Google service account that uploads data 
 4. Click **Create Credentials → Service Account**
 5. Follow the prompts (you can skip role assignment)
 6. After creating the service account:
-   - Go to the account → **Keys** tab → **Add Key → Create new key → JSON**
+   - Go to the account → **Keys** tab → **Add Key** → **Create new key** → **JSON**
 7. Download and save it as `config/google_creds.json`
    - A template is also provided in this repo (`config/google_creds.template.json`)
-   - Simply update the file name to `config/google_creds.json`
-   - Copy-paste to replace the contents of the JSON filed downloaded in Google Cloud Console to this file
+   - Simply update the file name to `config/google_creds.json` and copy-paste to replace the contents of the JSON file downloaded in Google Cloud Console to this file
 8. Share your target Google Sheets with the service account email (e.g. `...@...iam.gserviceaccount.com`), giving it Editor access
 
 ### 2. *`settings.yaml`*
@@ -65,6 +66,36 @@ This file contains:
 - Output filenames (if generating CSVs on your own machine)
 - Delay durations (time to wait after certain UI interactions)
 - Google Sheets export details (for automated exports)
+
+---
+
+## GitHub Actions setup
+
+This is already set up to automatically run daily.   
+
+### Repository secrets
+
+Go to GitHub → **Settings → Secrets and Variables → Actions**
+
+Create the following secrets under **Repository secrets**:
+
+| Name                | Value                                      |
+|---------------------|--------------------------------------------|
+| `GOOGLE_CREDS_JSON` | Paste the contents of `google_creds.json`  |
+| `SETTINGS_YAML`     | Paste the contents of `settings.yaml`      |
+
+### Workflow file: `.github/workflows/schedule.yml`
+
+The current workflow will:
+
+- Run daily at 2am UTC
+- Or can be triggered manually via the GitHub UI
+
+### Manual run 
+
+Go to GitHub → **Actions** → **Daily OA.Report Parsing** → **Run workflow**
+
+All four parsers will run manually. All runs, whether failed or successful, will be listed on this page as well. 
 
 ---
 
@@ -93,33 +124,3 @@ python extractors/actions.py --env dev
 ```
 
 The data will be exported both to CSV (in your local project folder) and to the configured remote Google Sheet.
-
----
-
-## GitHub Actions setup
-
-This is already set up to automatically run daily.   
-
-### Repository secrets
-
-Go to GitHub → **Settings → Secrets and Variables → Actions**
-
-Create the following secrets under **Repository secrets**:
-
-| Name                | Value                                      |
-|---------------------|--------------------------------------------|
-| `GOOGLE_CREDS_JSON` | Paste the contents of `google_creds.json`  |
-| `SETTINGS_YAML`     | Paste the contents of `settings.yaml`      |
-
-### Workflow file: `.github/workflows/schedule.yml`
-
-The current workflow will:
-
-- Run daily at 2am UTC
-- Or can be triggered manually via the GitHub UI
-
-### Manual run 
-
-Go to GitHub → **Actions → Daily OA.Report Parsing → Run workflow**
-
-All four parsers will run manually. All runs, whether failed or successful, will be listed on this page as well. 
