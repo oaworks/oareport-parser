@@ -1,0 +1,37 @@
+# URLs for staging and dev
+urls:
+  staging:
+    - "https://staging.oa.report/gates-foundation"
+  dev:
+    - "https://dev.oa.report/gates-foundation"
+
+# XPaths for Insights extraction
+xpaths:
+  year_buttons: "//div[@id='year-buttons-container']/button"
+  insights_cards: "//div[@id='insights_articles']//article[not(contains(@style, 'display: none'))]"
+  insight_name: ".//h3"
+  value: ".//span[contains(@id, 'percent_') or contains(@id, 'articles_')]"
+  all_time_button: "//div[@id='year-buttons-container']/button[@id='all-time']"
+
+# XPaths for Actions extraction
+  actions_buttons: "//ul[@id='actions_buttons']//li[not(contains(@style, 'display: none'))]"
+
+# Delays (in seconds)
+delays:
+  page_load: 2   # Time to wait after page loads
+  data_load: 3   # Time to wait after clicking year buttons
+
+# Local CSV export filenames
+output_file_insights: "insights_data.csv"
+output_file_actions: "actions_data.csv"
+
+# Google Sheet export targets (per parser and environment)
+google_sheets:
+  creds_file: config/google_creds.json
+  sheets:
+    insights:
+      staging: api_insights_parsed_data
+      dev: beta_insights_parsed_data
+    actions:
+      staging: api_actions_parsed_data
+      dev: beta_actions_parsed_data
