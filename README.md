@@ -15,18 +15,20 @@ This repo extracts data from OA.Report organisation pages ([`dev`](https://dev.o
 
 ```
 .
-├── config/                      # Configuration files (never commit secrets; both files are in .gitignore)
-│   ├── settings.yaml            # List of parsed URLs, XPaths, output files, Google Sheets mapping
-│   └── google_creds.json        # Google service account credentials
-├── extractors/                  # Main parser scripts
-│   ├── insights.py              # Parses Insights data
-│   ├── explore.py               # Parses Explore data
-│   └── actions.py               # Parses Actions data
-├── export/                      # Google Sheets export handler
-│   └── google_sheets.py         # Uploads data frames to Google Sheets
+├── config/                          # Configuration files (never commit secrets; both files are in .gitignore)
+│   ├── google_creds.json            # Google service account credentials
+│   ├── google_creds.template.json   # Template for google_creds.json — remove .template
+│   ├── settings.yaml                # List of parsed URLs, XPaths, output files, Google Sheets mapping
+│   └── settings.template.yaml       # Template for settings.yaml — remove .template
+├── extractors/                      # Main parser scripts
+│   ├── insights.py                  # Parses Insights data
+│   ├── explore.py                   # Parses Explore data
+│   └── actions.py                   # Parses Actions data
+├── export/                          # Google Sheets export handler
+│   └── google_sheets.py             # Uploads data frames to Google Sheets
 ├── .github/
-│   └── workflows/schedule.yml  # GitHub Actions runner (scheduled daily)
-└── requirements.txt            # Python dependencies
+│   └── workflows/schedule.yml      # GitHub Actions runner (scheduled daily)
+└── requirements.txt                # Python dependencies
 ```
 
 ---
