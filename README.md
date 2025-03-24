@@ -69,34 +69,6 @@ This file contains:
 
 ---
 
-## Running locally
-
-Useful for one-off exports in a single CSV file or for testing any changes done to the parsers before committing them to the repository. 
-
-1. Set up your Python environment:
-
-```bash
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-```
-
-1. Run any parser manually:
-
-```bash
-# For Insights
-python extractors/insights.py --env staging
-python extractors/insights.py --env dev
-
-# For Actions
-python extractors/actions.py --env staging
-python extractors/actions.py --env dev
-```
-
-The data will be exported both to CSV (in your local project folder) and to the configured remote Google Sheet.
-
----
-
 ## GitHub Actions setup
 
 This is already set up to automatically run daily.   
@@ -124,3 +96,31 @@ The current workflow will:
 Go to GitHub → **Actions** → **Daily OA.Report Parsing** → **Run workflow**
 
 All four parsers will run manually. All runs, whether failed or successful, will be listed on this page as well. 
+
+---
+
+## Running locally
+
+Useful for one-off exports in a single CSV file or for testing any changes done to the parsers before committing them to the repository. 
+
+1. Set up your Python environment:
+
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+1. Run any parser manually:
+
+```bash
+# For Insights
+python extractors/insights.py --env staging
+python extractors/insights.py --env dev
+
+# For Actions
+python extractors/actions.py --env staging
+python extractors/actions.py --env dev
+```
+
+The data will be exported both to CSV (in your local project folder) and to the configured remote Google Sheet.
