@@ -1,7 +1,9 @@
 import gspread
+import time
 from oauth2client.service_account import ServiceAccountCredentials
+from gspread.exceptions import APIError
 
-def upload_df_to_gsheet(df, spreadsheet_name, creds_path):
+def upload_df_to_gsheet(df, spreadsheet_name, creds_path, retries=3, delay=10):
     # Define Google Sheets API scope
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 
@@ -13,14 +15,25 @@ def upload_df_to_gsheet(df, spreadsheet_name, creds_path):
     spreadsheet = client.open(spreadsheet_name)
     worksheet = spreadsheet.get_worksheet(0)
 
-    # Check if the first row already contains headers
+    # Get all existing rows (check if header exists)
     existing_values = worksheet.get_all_values()
     if not existing_values:
-        # Sheet is empty — write headers
-        worksheet.append_row(df.columns.values.tolist())
+        worksheet.append_row(df.columns.tolist())
 
-    # Append each row of data
-    for row in df.values.tolist():
-        worksheet.append_row(row)
+    # Convert data frame to list of rows
+    data_rows = df.values.tolist()
 
-    print(f"Appended {len(df)} rows to Google Sheets: {spreadsheet_name}")
+    # Retry appending if rate limit is hit
+    for attempt in range(retries):
+        try:
+            worksheet.append_rows(data_rows)
+            print(f"Appended {len(data_rows)} rows to Google Sheet: {spreadsheet_name}")
+            break  # Success, exit loop
+        except APIError as e:
+            if "Quota exceeded" in str(e):
+                print(f"Rate limit hit, retrying in {delay} seconds… (attempt {attempt+1}/{retries})")
+                time.sleep(delay)
+            else:
+                raise  # Raise other API errors immediately
+    else:
+        print("Failed to append rows after multiple attempts due to API rate limits.")
