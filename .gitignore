@@ -23,6 +23,7 @@ google_creds.json
 # CSV Exports
 data/
 *.csv
+*.xlsx
 
 # Selenium WebDriver binary
 chromedriver
