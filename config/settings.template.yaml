@@ -1,9 +1,23 @@
-# URLs for staging and dev
-urls:
+# URLs for Insights section
+insights_urls:
   staging:
-    - "https://staging.oa.report/gates-foundation"
+    - "https://staging.oa.report/ORG-NAME-HERE?orgkey=ORG-KEY-HERE"
   dev:
-    - "https://dev.oa.report/gates-foundation"
+    - "https://dev.oa.report/ORG-NAME-HERE?orgkey=ORG-KEY-HERE"
+
+# URLs for Explore section
+explore_urls:
+  staging:
+    - "https://staging.oa.report/ORG-NAME-HERE?orgkey=ORG-KEY-HERE"
+  dev:
+    - "https://dev.oa.report/ORG-NAME-HERE?orgkey=ORG-KEY-HERE"
+
+# URLs for Actions section
+actions_urls:
+  staging:
+    - "https://staging.oa.report/ORG-NAME-HERE?orgkey=ORG-KEY-HERE"
+  dev:
+    - "https://dev.oa.report/ORG-NAME-HERE?orgkey=ORG-KEY-HERE"
 
 # XPaths for Insights extraction
 xpaths:
@@ -13,6 +27,11 @@ xpaths:
   value: ".//span[contains(@id, 'percent_') or contains(@id, 'articles_')]"
   all_time_button: "//div[@id='year-buttons-container']/button[@id='all-time']"
 
+# XPaths for Explore extraction
+  explore_table: "//table[@id='explore_table']/tbody"
+  explore_headers: "//table[@id='explore_table']/thead/tr/th"
+  explore_rows: "//table[@id='explore_table']/tbody/tr"
+
 # XPaths for Actions extraction
   actions_buttons: "//ul[@id='actions_buttons']//li[not(contains(@style, 'display: none'))]"
 
@@ -21,17 +40,22 @@ delays:
   page_load: 2   # Time to wait after page loads
   data_load: 3   # Time to wait after clicking year buttons
 
-# Local CSV export filenames
+# Output file names
 output_file_insights: "insights_data.csv"
+output_file_explore: "explore_data.csv"
 output_file_actions: "actions_data.csv"
 
-# Google Sheet export targets (per parser and environment)
+# Google Sheets settings
 google_sheets:
   creds_file: config/google_creds.json
+
   sheets:
     insights:
       staging: api_insights_parsed_data
       dev: beta_insights_parsed_data
+    explore:
+      staging: api_explore_parsed_data
+      dev: beta_explore_parsed_data
     actions:
       staging: api_actions_parsed_data
       dev: beta_actions_parsed_data

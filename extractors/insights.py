@@ -67,11 +67,11 @@ def extract_insights(driver, url, date_range, xpaths):
     return insights_data
 
 # Main function to process all URLs
-def scrape_insights(environment):
+def scrape_insights(env):
     driver = get_driver()
     all_insights = []
     xpaths = CONFIG["xpaths"]
-    urls = CONFIG["urls"][environment]
+    urls = CONFIG.get("insights_urls", {}).get(env, [])
     
     for url in urls:
         print(f"Scraping: {url}")

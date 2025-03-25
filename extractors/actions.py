@@ -68,11 +68,11 @@ def extract_actions(driver, url, date_range, xpaths):
     return actions_data
 
 # Main function to process all URLs
-def scrape_actions(environment):
+def scrape_actions(env):
     driver = get_driver()
     all_actions = []
     xpaths = CONFIG["xpaths"]
-    urls = CONFIG["urls"][environment]
+    urls = CONFIG.get("actions_urls", {}).get(env, [])
     
     for url in urls:
         print(f"Scraping: {url}")
