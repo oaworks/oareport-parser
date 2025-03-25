@@ -1,5 +1,6 @@
 import gspread
 import time
+import pandas as pd
 from oauth2client.service_account import ServiceAccountCredentials
 from gspread.exceptions import APIError
 
@@ -44,3 +45,20 @@ def upload_df_to_gsheet(df, spreadsheet_name, creds_path, retries=3, delay=10):
                 raise  # Raise other API errors immediately
     else:
         print("Failed to append rows after multiple attempts due to API rate limits.")
+
+def load_gsheet_to_df(spreadsheet_name, creds_path, worksheet_index=0):
+    """
+    Load data from a Google Sheet into a pandas DataFrame.
+    Only pulls the worksheet at the given index (default = 0).
+    Assumes headers are in the first row.
+    """
+    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+    creds = ServiceAccountCredentials.from_json_keyfile_name(creds_path, scope)
+    client = gspread.authorize(creds)
+
+    spreadsheet = client.open(spreadsheet_name)
+    worksheet = spreadsheet.get_worksheet(worksheet_index)
+
+    # Get all rows as dictionaries (header taken from row 1)
+    records = worksheet.get_all_records()
+    return pd.DataFrame(records)
