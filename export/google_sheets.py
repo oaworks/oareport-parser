@@ -31,6 +31,9 @@ def upload_df_to_gsheet(df, spreadsheet_name, creds_path, retries=3, delay=10):
     # Convert dataframe to list of lists
     data_rows = df.values.tolist()
 
+    print("Local DF columns:", df.columns.tolist())
+    print("Remote sheet columns:", existing_values[0])
+
     # Retry appending if rate limit is hit
     for attempt in range(retries):
         try:
