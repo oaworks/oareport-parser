@@ -26,13 +26,12 @@ def upload_df_to_gsheet(df, spreadsheet_name, creds_path, retries=3, delay=10):
     # If sheet is not empty but headers don't match, raise a warning
     elif existing_values[0] != df.columns.tolist():
         print("Column headers do not match existing sheet. No data appended.")
+        print("Local DF columns:", df.columns.tolist())
+        print("Remote sheet columns:", existing_values[0])
         return
 
     # Convert dataframe to list of lists
     data_rows = df.values.tolist()
-
-    print("Local DF columns:", df.columns.tolist())
-    print("Remote sheet columns:", existing_values[0])
 
     # Retry appending if rate limit is hit
     for attempt in range(retries):
