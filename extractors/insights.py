@@ -117,13 +117,9 @@ def main():
 
     # Upload to Google Sheets
     spreadsheet_name = CONFIG["google_sheets"]["sheets"]["insights"][args.env]
-    creds_path = CONFIG["google_sheets"]["creds_file"]
+    creds_file = CONFIG["google_sheets"]["creds_file"]
 
-    upload_df_to_gsheet(
-        df=df,
-        spreadsheet_name=spreadsheet_name,
-        creds_path=creds_path
-    )
+    upload_df_to_gsheet(df, spreadsheet_name, creds_file)
 
 if __name__ == "__main__":
     main()
