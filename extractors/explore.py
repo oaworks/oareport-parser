@@ -62,17 +62,20 @@ def scrape_explore(env):
         time.sleep(CONFIG["delays"]["page_load"]) # Wait for page to load
         
         # Click All-time button
-        WebDriverWait(driver, 10).until(
+        explore_all_time_button = WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable((By.XPATH, xpaths["all_time_button"]))
-        ).click()
+        )
+        driver.execute_script("arguments[0].click();", explore_all_time_button)
         WebDriverWait(driver, delay["data_load"])
+        time.sleep(10) 
 
         # Click Explore > Years button
-        WebDriverWait(driver, 10).until(
+        explore_year_button = WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable((By.ID, "explore_year_button"))
-        ).click()
+        )
+        driver.execute_script("arguments[0].click();", explore_year_button)
         WebDriverWait(driver, delay["data_load"])
-        time.sleep(3)
+        time.sleep(5)
 
         try:
             table_data = extract_table_data(driver)
