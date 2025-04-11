@@ -113,6 +113,7 @@ def main():
     output_file = f"insights_{args.env}_data.csv"
     df = pd.DataFrame(insights_data)
     df.to_csv(output_file, index=False)
+    print(f"Scraped {len(insights_data)} rows total.")
     print(f"Data saved to {output_file}")
 
     # Upload to Google Sheets
