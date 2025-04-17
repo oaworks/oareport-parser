@@ -67,7 +67,7 @@ def scrape_explore(env):
         )
         driver.execute_script("arguments[0].click();", explore_all_time_button)
         WebDriverWait(driver, delay["data_load"])
-        time.sleep(10) 
+        time.sleep(10)
 
         # Click Explore > Years button
         explore_year_button = WebDriverWait(driver, 10).until(
@@ -83,12 +83,36 @@ def scrape_explore(env):
             print(f"Failed to extract table from {url}: {e}")
             continue
 
+        # Pick only the last N (= years_to_keep) years
+        key_col = list(table_data[0].keys())[0] if table_data else "KEY" # Grab header name of first col; default to "KEY"
+        yrs_to_keep = CONFIG["explore"]["years_to_keep"]
+
+        # Keys in the table header look like "2025", "All time", etc.
+        yrs_to_keep   = CONFIG["explore"]["years_to_keep"]
+        numeric_years = sorted(
+            {int(r.get(key_col, "")) for r in table_data if r.get(key_col, "").isdigit()}
+        )
+        recent_years  = set(numeric_years[-yrs_to_keep:]) # e.g. {2025, 2024}
+
+        # Pivot: one metric per row
+        ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
         for row in table_data:
-            all_data.append({
-                "collection_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "org_url": url,
-                **row
-            })
+            yr = row.get(key_col, "")
+            if yr.isdigit() and int(yr) not in recent_years:
+                continue          # skip old years
+
+            for metric, val in row.items():
+                if metric == key_col:
+                    continue      # don’t treat the year column as a metric
+
+                all_data.append({
+                    "date_range"    : yr,
+                    "figure"        : f"{metric} (Explore)",
+                    "value"         : val,
+                    "Page_URL"      : url,
+                    "collection_time": ts
+                })
 
     driver.quit()
     return pd.DataFrame(all_data)
