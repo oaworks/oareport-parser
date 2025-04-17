@@ -4,10 +4,10 @@ This repo extracts data from OA.Report organisation pages ([`dev`](https://dev.o
 
 ## What it does
 
-- Scrapes Insights and Actions metrics from OA.Report's `staging` and `dev` environments using Selenium.
-- Extracts data using XPath to target specific page elements and stores it in `.csv` files.
+- Scrapes Insights, Explore, and Actions metrics from OA.Report's `staging` and `dev` environments using Selenium.
+- Extracts data using XPath to target specific page elements and stores it in local `.csv` files.
 - Automatically uploads parsed data to four separate Google Sheets.
-- All four parsers are scheduled to run daily via GitHub Actions.
+- All six parsers are scheduled to run daily via GitHub Actions.
 
 ---
 
@@ -117,6 +117,10 @@ pip install -r requirements.txt
 # For Insights
 python extractors/insights.py --env staging
 python extractors/insights.py --env dev
+
+# For Explore
+python extractors/explore.py --env staging
+python extractors/explore.py --env dev
 
 # For Actions
 python extractors/actions.py --env staging
