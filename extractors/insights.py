@@ -53,7 +53,7 @@ def extract_insights(driver, url, date_range, xpaths):
         except:
             value = "N/A"
         
-        collection_time = datetime.now().timestamp() / 86400 + 25569  # Excel serial format
+        collection_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")  # Human-readable timestamp
         page_url = driver.current_url  # Capture current page URL
         
         insights_data.append({
