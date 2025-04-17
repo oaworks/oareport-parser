@@ -54,7 +54,7 @@ def extract_actions(driver, url, date_range, xpaths):
         except:
             value = "N/A"
         
-        collection_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")  # Human-readable timestamp
+        collection_time = datetime.now().timestamp() / 86400 + 25569  # Excel serial format
         page_url = driver.current_url  # Capture current page URL
         
         actions_data.append({
