@@ -9,6 +9,7 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import StaleElementReferenceException   # ← added
 
 # Allow import from parent directory for Google Sheets export
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -77,7 +78,33 @@ def scrape_explore(env):
         WebDriverWait(driver, delay["data_load"])
         time.sleep(5)
 
+        # Toggle to raw numbers (if currently showing %)
         try:
+            # element might be present but not yet interactable – wait for presence first
+            toggle = WebDriverWait(driver, 5).until(
+                EC.presence_of_element_located((By.ID, "toggle-data-view"))
+            )
+            driver.execute_script("arguments[0].scrollIntoView({block:'center'});", toggle)
+
+            # click only when it is really in % mode
+            if toggle.get_attribute("aria-checked") == "true":
+                driver.execute_script("arguments[0].click();", toggle)
+
+                # wait until aria‑checked flips to "false"
+                WebDriverWait(driver, 10).until(
+                    lambda d: d.find_element(By.ID, "toggle-data-view")
+                              .get_attribute("aria-checked") == "false"
+                )
+                # give the table time to re‑render
+                WebDriverWait(driver, delay["data_load"])
+        except Exception as e:
+            print(f"[warn] could not toggle raw/percent switch on {url}: {e}")
+        
+        # Extract table
+        try:
+            table_data = extract_table_data(driver)
+        except StaleElementReferenceException:
+            # rare second refresh – retry once
             table_data = extract_table_data(driver)
         except Exception as e:
             print(f"Failed to extract table from {url}: {e}")
@@ -87,12 +114,10 @@ def scrape_explore(env):
         key_col = list(table_data[0].keys())[0] if table_data else "KEY" # Grab header name of first col; default to "KEY"
         yrs_to_keep = CONFIG["explore"]["years_to_keep"]
 
-        # Keys in the table header look like "2025", "All time", etc.
-        yrs_to_keep   = CONFIG["explore"]["years_to_keep"]
         numeric_years = sorted(
             {int(r.get(key_col, "")) for r in table_data if r.get(key_col, "").isdigit()}
         )
-        recent_years  = set(numeric_years[-yrs_to_keep:]) # e.g. {2025, 2024}
+        recent_years = set(numeric_years[-yrs_to_keep:]) # e.g. {2025, 2024}
 
         # Pivot: one metric per row
         ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -100,17 +125,17 @@ def scrape_explore(env):
         for row in table_data:
             yr = row.get(key_col, "")
             if yr.isdigit() and int(yr) not in recent_years:
-                continue          # skip old years
+                continue    # Skip old years not in last N years
 
             for metric, val in row.items():
                 if metric == key_col:
-                    continue      # don’t treat the year column as a metric
+                    continue    # don’t treat the year column as a metric
 
                 all_data.append({
-                    "date_range"    : yr,
-                    "figure"        : f"{metric} (Explore)",
-                    "value"         : val,
-                    "Page_URL"      : url,
+                    "date_range"     : yr,
+                    "figure"         : f"{metric} (Explore)",
+                    "value"          : val,
+                    "Page_URL"       : url,
                     "collection_time": ts
                 })
 
@@ -127,6 +152,7 @@ def main():
     df.to_csv(output_file, index=False)
     print(f"Data saved to {output_file}")
 
+    # Upload to Google Sheets
     spreadsheet_name = CONFIG["google_sheets"]["sheets"]["explore"][args.env]
     creds_file = CONFIG["google_sheets"]["creds_file"]
 
