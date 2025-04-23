@@ -15,11 +15,16 @@ from selenium.common.exceptions import StaleElementReferenceException   # ← ad
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from export.google_sheets import upload_df_to_gsheet
 
-# Load config
+# --------------------------------------------------------------------------- #
+#  Configuration
+# --------------------------------------------------------------------------- #
 CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../config/settings.yaml")
 with open(CONFIG_PATH, "r") as f:
     CONFIG = yaml.safe_load(f)
 
+# --------------------------------------------------------------------------- #
+#  Selenium helpers
+# --------------------------------------------------------------------------- #
 def get_driver():
     options = webdriver.ChromeOptions()
     options.add_argument("--headless")
@@ -50,98 +55,109 @@ def extract_table_data(driver):
 
     return data
 
+# --------------------------------------------------------------------------- #
+#  Core scraping routine
+# --------------------------------------------------------------------------- #
 def scrape_explore(env):
-    urls = CONFIG.get("explore_urls", {}).get(env, [])
-    xpaths = CONFIG["xpaths"]
-    delay = CONFIG["delays"]
-    driver = get_driver()
-    all_data = []
+    """
+    For every URL in settings.yaml → explore_urls[env]:
+        • load page
+        • switch to: All-time / yearly view / raw numbers
+        • extract table (“All articles”)
+        • if the “Preprints” radio is present, click it, re-extract table
+    Returns a flattened DataFrame with one metric per row.
+    """
+    urls         = CONFIG.get("explore_urls", {}).get(env, [])
+    xpaths       = CONFIG["xpaths"]
+    delay_cfg    = CONFIG["delays"]
+    years_to_keep = CONFIG["explore"]["years_to_keep"]
+
+    driver   = get_driver()
+    out_rows = []
 
     for url in urls:
-        print(f"Scraping Explore from: {url}")
+        print(f"→ {url}")
         driver.get(url)
-        time.sleep(CONFIG["delays"]["page_load"]) # Wait for page to load
-        
-        # Click All-time button
-        explore_all_time_button = WebDriverWait(driver, 10).until(
+        time.sleep(delay_cfg["page_load"])
+
+        # --- 1. Click all-time ---------------------------------------------------------- #
+        btn_all_time = WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable((By.XPATH, xpaths["all_time_button"]))
         )
-        driver.execute_script("arguments[0].click();", explore_all_time_button)
-        WebDriverWait(driver, delay["data_load"])
-        time.sleep(10)
+        driver.execute_script("arguments[0].click();", btn_all_time)
+        time.sleep(delay_cfg["data_load"])
 
-        # Click Explore > Years button
-        explore_year_button = WebDriverWait(driver, 10).until(
+        # --- 2. Click year-by-year breakdown -------------------------------------------- #
+        btn_year = WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable((By.ID, "explore_year_button"))
         )
-        driver.execute_script("arguments[0].click();", explore_year_button)
-        WebDriverWait(driver, delay["data_load"])
-        time.sleep(5)
+        driver.execute_script("arguments[0].click();", btn_year)
+        time.sleep(delay_cfg["data_load"])
 
-        # Toggle to raw numbers (if currently showing %)
+        # --- 3. Toggle to raw number mode ----------------------------------------------- #
         try:
-            # element might be present but not yet interactable – wait for presence first
             toggle = WebDriverWait(driver, 5).until(
                 EC.presence_of_element_located((By.ID, "toggle-data-view"))
             )
-            driver.execute_script("arguments[0].scrollIntoView({block:'center'});", toggle)
-
-            # click only when it is really in % mode
-            if toggle.get_attribute("aria-checked") == "true":
+            if toggle.get_attribute("aria-checked") == "true":   # “%” mode
                 driver.execute_script("arguments[0].click();", toggle)
-
-                # wait until aria‑checked flips to "false"
                 WebDriverWait(driver, 10).until(
                     lambda d: d.find_element(By.ID, "toggle-data-view")
                               .get_attribute("aria-checked") == "false"
                 )
-                # give the table time to re‑render
-                WebDriverWait(driver, delay["data_load"])
+                time.sleep(delay_cfg["data_load"])
         except Exception as e:
-            print(f"[warn] could not toggle raw/percent switch on {url}: {e}")
-        
-        # Extract table
+            print(f"[warn] raw-number toggle unavailable: {e}")
+
+        # --- Helper to flatten a table into out_rows ------------------------------------ #
+        def _flush_table(table: list[dict], label_suffix: str):
+            if not table:
+                return
+            year_col  = next(iter(table[0]))            # first column is Year/KEY
+            recent    = sorted(
+                {int(r[year_col]) for r in table if r[year_col].isdigit()}
+            )[-years_to_keep:]
+
+            ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            for r in table:
+                yr = r[year_col]
+                if yr.isdigit() and int(yr) not in recent:
+                    continue
+                for metric, val in r.items():
+                    if metric == year_col:
+                        continue
+                    out_rows.append({
+                        "date_range"     : yr,
+                        "figure"         : f"{metric} {label_suffix}",
+                        "value"          : val,
+                        "Page_URL"       : url,
+                        "collection_time": ts
+                    })
+
+        # --- 4. Normal publications view ------------------------------------------------ #
         try:
-            table_data = extract_table_data(driver)
+            tbl = extract_table_data(driver)
         except StaleElementReferenceException:
-            # rare second refresh – retry once
-            table_data = extract_table_data(driver)
-        except Exception as e:
-            print(f"Failed to extract table from {url}: {e}")
-            continue
+            tbl = extract_table_data(driver)
+        _flush_table(tbl, "(Explore)")
 
-        # Pick only the last N (= years_to_keep) years
-        key_col = list(table_data[0].keys())[0] if table_data else "KEY" # Grab header name of first col; default to "KEY"
-        yrs_to_keep = CONFIG["explore"]["years_to_keep"]
-
-        numeric_years = sorted(
-            {int(r.get(key_col, "")) for r in table_data if r.get(key_col, "").isdigit()}
-        )
-        recent_years = set(numeric_years[-yrs_to_keep:]) # e.g. {2025, 2024}
-
-        # Pivot: one metric per row
-        ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-        for row in table_data:
-            yr = row.get(key_col, "")
-            if yr.isdigit() and int(yr) not in recent_years:
-                continue    # Skip old years not in last N years
-
-            for metric, val in row.items():
-                if metric == key_col:
-                    continue    # don’t treat the year column as a metric
-
-                all_data.append({
-                    "date_range"     : yr,
-                    "figure"         : f"{metric} (Explore)",
-                    "value"          : val,
-                    "Page_URL"       : url,
-                    "collection_time": ts
-                })
+        # --- 5. Optional: Preprints view ------------------------------------------------ #
+        try:
+            radio_pp = driver.find_element(By.ID, "filter_is_preprint")
+            driver.execute_script("arguments[0].click();", radio_pp)
+            time.sleep(delay_cfg["data_load"])
+            tbl_pp = extract_table_data(driver)
+            _flush_table(tbl_pp, "(Explore – Preprints)")
+        except Exception:
+            # radio absent → silently ignore
+            pass
 
     driver.quit()
-    return pd.DataFrame(all_data)
+    return pd.DataFrame(out_rows)
 
+# --------------------------------------------------------------------------- #
+#  CLI entry point
+# --------------------------------------------------------------------------- #
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--env", choices=["staging", "dev"], required=True)
