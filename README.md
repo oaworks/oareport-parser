@@ -22,6 +22,7 @@ This repo extracts data from OA.Report organisation pages ([`dev`](https://dev.o
 │   └── settings.template.yaml       # Template for settings.yaml — remove .template
 ├── extractors/                      # Main parser scripts
 │   ├── insights.py                  # Parses Insights data
+│   ├── compare_snapshots.py         # Compares two data snapshots — not in use at the moment
 │   ├── explore.py                   # Parses Explore data
 │   └── actions.py                   # Parses Actions data
 ├── export/                          # Google Sheets export handler
