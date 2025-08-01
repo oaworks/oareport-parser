@@ -1,39 +1,24 @@
-#!/usr/bin/env python3
-"""
-───────────────────────────────────────────────────────────────────────────────
-  OA.Report – Explore scraper
-───────────────────────────────────────────────────────────────────────────────
-• Scrapes “Explore” for every URL in `settings.yaml → explore_urls[… ]`
-• Writes **one worksheet per run** so a single tab can never exceed 10 M cells
-    ─ daily mode (default) :  2025-08-01
-    ─ weekly mode          :  2025-07-27__2025-08-02   (Sun-to-Sat)
-• An ‘INFO’ tab tracks all run-tabs (latest appended last).  
-  Down-stream QA formulas can always pick “last two runs” programmatically.
-───────────────────────────────────────────────────────────────────────────────
-"""
-
-# --------------------------------------------------------------------------- #
-#  Imports
-# --------------------------------------------------------------------------- #
-import os, sys, yaml, argparse, time
-from datetime import datetime, date, timedelta
+import os
+import sys
+import yaml
+import argparse
 import pandas as pd
-
+import time
+from datetime import datetime
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import StaleElementReferenceException
+from selenium.common.exceptions import StaleElementReferenceException   # ← added
 
-# Allow import from parent directory for Google Sheets export helpers
+# Allow import from parent directory for Google Sheets export
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from export.google_sheets import upload_df_to_gsheet, append_run_to_info  # noqa: E402
+from export.google_sheets import upload_df_to_gsheet
 
 # --------------------------------------------------------------------------- #
 #  Configuration
 # --------------------------------------------------------------------------- #
-CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                           "../config/settings.yaml")
+CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../config/settings.yaml")
 with open(CONFIG_PATH, "r") as f:
     CONFIG = yaml.safe_load(f)
 
@@ -49,148 +34,145 @@ def get_driver():
     return webdriver.Chrome(options=options)
 
 def extract_table_data(driver):
-    """Return Explore table as list[dict]."""
     WebDriverWait(driver, 10).until(
         EC.presence_of_element_located((By.ID, "explore_table"))
     )
 
-    # ► headers
+    # Get headers
     header_row = driver.find_element(By.XPATH, "//table[@id='explore_table']//thead/tr")
-    headers    = [th.text.strip() for th in header_row.find_elements(By.TAG_NAME, "th")]
+    headers = [th.text.strip() for th in header_row.find_elements(By.TAG_NAME, "th")]
 
-    # ► body rows
+    # Get body rows
+    body_rows = driver.find_elements(By.XPATH, "//table[@id='explore_table']//tbody/tr")
     data = []
-    for row in driver.find_elements(By.XPATH, "//table[@id='explore_table']//tbody/tr"):
-        cells   = [td.text.strip() for td in row.find_elements(By.TAG_NAME, "td")]
-        if len(cells) != len(headers):
-            print("Skipping row due to col mismatch:", cells)
+    for row in body_rows:
+        cells = row.find_elements(By.TAG_NAME, "td")
+        values = [cell.text.strip() for cell in cells]
+        if len(values) != len(headers):
+            print(f"Skipping row: {values} (expected {len(headers)} columns)")
             continue
-        data.append(dict(zip(headers, cells)))
+        data.append(dict(zip(headers, values)))
+
     return data
-
-# --------------------------------------------------------------------------- #
-#  Tab-naming helpers
-# --------------------------------------------------------------------------- #
-def today_tab() -> str:
-    return date.today().isoformat()                         # 2025-08-01
-
-def week_tab() -> str:
-    today   = date.today()
-    sunday  = today - timedelta(days=(today.weekday() + 1) % 7)
-    saturday = sunday + timedelta(days=6)
-    return f"{sunday}__{saturday}"                          # 2025-07-27__2025-08-02
 
 # --------------------------------------------------------------------------- #
 #  Core scraping routine
 # --------------------------------------------------------------------------- #
-def scrape_explore(env: str) -> pd.DataFrame:
+def scrape_explore(env):
     """
-    • load page  → all-time
-    • switch to yearly, raw numbers
-    • extract table(s)  – main view + optional “Preprints”
-    • keep only the N most recent years, flatten to rows
+    For every URL in settings.yaml → explore_urls[env]:
+        • load page
+        • switch to: All-time / yearly view / raw numbers
+        • extract table (“All articles”)
+        • if the “Preprints” radio is present, click it, re-extract table
+    Returns a flattened DataFrame with one metric per row.
     """
-    urls       = CONFIG["explore_urls"][env]
-    xpaths     = CONFIG["xpaths"]
-    delay_cfg  = CONFIG["delays"]
-    keep_years = CONFIG["explore"]["years_to_keep"]
+    urls         = CONFIG.get("explore_urls", {}).get(env, [])
+    xpaths       = CONFIG["xpaths"]
+    delay_cfg    = CONFIG["delays"]
+    years_to_keep = CONFIG["explore"]["years_to_keep"]
 
     driver   = get_driver()
     out_rows = []
 
     for url in urls:
-        print("→", url)
-        driver.get(url);                     time.sleep(delay_cfg["page_load"])
+        print(f"→ {url}")
+        driver.get(url)
+        time.sleep(delay_cfg["page_load"])
 
-        # (1) click “All-time”
-        WebDriverWait(driver, 10).until(
+        # --- 1. Click all-time ---------------------------------------------------------- #
+        btn_all_time = WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable((By.XPATH, xpaths["all_time_button"]))
-        ).click()
+        )
+        driver.execute_script("arguments[0].click();", btn_all_time)
         time.sleep(delay_cfg["data_load"])
 
-        # (2) click “Years” breakdown
-        WebDriverWait(driver, 10).until(
+        # --- 2. Click year-by-year breakdown -------------------------------------------- #
+        btn_year = WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable((By.ID, "explore_year_button"))
-        ).click()
+        )
+        driver.execute_script("arguments[0].click();", btn_year)
         time.sleep(delay_cfg["data_load"])
 
-        # (3) toggle raw-numbers (if currently %)
+        # --- 3. Toggle to raw number mode ----------------------------------------------- #
         try:
             toggle = WebDriverWait(driver, 5).until(
                 EC.presence_of_element_located((By.ID, "toggle-data-view"))
             )
-            if toggle.get_attribute("aria-checked") == "true":
-                toggle.click()
+            if toggle.get_attribute("aria-checked") == "true":   # “%” mode
+                driver.execute_script("arguments[0].click();", toggle)
                 WebDriverWait(driver, 10).until(
                     lambda d: d.find_element(By.ID, "toggle-data-view")
-                              .get_attribute("aria-checked") == "false")
+                              .get_attribute("aria-checked") == "false"
+                )
                 time.sleep(delay_cfg["data_load"])
-        except Exception:
-            print("[warn] raw/percent toggle missing → skip")
+        except Exception as e:
+            print(f"[warn] raw-number toggle unavailable: {e}")
 
-        # helper to flatten a table into out_rows
-        def flush(tbl: list[dict], suffix: str):
-            if not tbl:
+        # --- Helper to flatten a table into out_rows ------------------------------------ #
+        def _flush_table(table: list[dict], label_suffix: str):
+            if not table:
                 return
-            key_col = next(iter(tbl[0]))                   # first column = year/“KEY”
-            recent  = sorted({int(r[key_col]) for r in tbl if r[key_col].isdigit()})[-keep_years:]
-            ts      = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            year_col  = next(iter(table[0]))            # first column is Year/KEY
+            recent    = sorted(
+                {int(r[year_col]) for r in table if r[year_col].isdigit()}
+            )[-years_to_keep:]
 
-            for r in tbl:
-                yr = r[key_col]
+            ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            for r in table:
+                yr = r[year_col]
                 if yr.isdigit() and int(yr) not in recent:
                     continue
                 for metric, val in r.items():
-                    if metric == key_col:
+                    if metric == year_col:
                         continue
                     out_rows.append({
                         "date_range"     : yr,
-                        "figure"         : f"{metric} {suffix}",
+                        "figure"         : f"{metric} {label_suffix}",
                         "value"          : val,
                         "Page_URL"       : url,
                         "collection_time": ts
                     })
 
-        # (4) ► main view
+        # --- 4. Normal publications view ------------------------------------------------ #
         try:
-            flush(extract_table_data(driver), "(Explore)")
+            tbl = extract_table_data(driver)
         except StaleElementReferenceException:
-            flush(extract_table_data(driver), "(Explore)")
+            tbl = extract_table_data(driver)
+        _flush_table(tbl, "(Explore)")
 
-        # (5) ► optional Preprints view
+        # --- 5. Optional: Preprints view ------------------------------------------------ #
         try:
-            driver.find_element(By.ID, "filter_is_preprint").click()
+            radio_pp = driver.find_element(By.ID, "filter_is_preprint")
+            driver.execute_script("arguments[0].click();", radio_pp)
             time.sleep(delay_cfg["data_load"])
-            flush(extract_table_data(driver), "(Explore – Preprints)")
+            tbl_pp = extract_table_data(driver)
+            _flush_table(tbl_pp, "(Explore – Preprints)")
         except Exception:
-            pass  # radio absent – ignore
+            # radio absent → silently ignore
+            pass
 
     driver.quit()
     return pd.DataFrame(out_rows)
 
 # --------------------------------------------------------------------------- #
-#  CLI entry-point
+#  CLI entry point
 # --------------------------------------------------------------------------- #
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--env",    required=True, choices=["staging", "dev"])
-    parser.add_argument("--period", choices=["daily", "weekly"], default="daily")
+    parser.add_argument("--env", choices=["staging", "dev"], required=True)
     args = parser.parse_args()
 
-    df        = scrape_explore(args.env)
-    ss_name   = CONFIG["google_sheets"]["sheets"]["explore"][args.env]
-    creds     = CONFIG["google_sheets"]["creds_file"]
-    tab_name  = today_tab() if args.period == "daily" else week_tab()
+    df = scrape_explore(args.env)
+    output_file = f"explore_{args.env}_data.csv"
+    df.to_csv(output_file, index=False)
+    print(f"Data saved to {output_file}")
 
-    # write to sheet (replace tab if already exists)
-    upload_df_to_gsheet(df, ss_name, creds,
-                        worksheet_name=tab_name, replace_sheet=True)
-    append_run_to_info(ss_name, creds, tab_name)
+    # Upload to Google Sheets
+    spreadsheet_name = CONFIG["google_sheets"]["sheets"]["explore"][args.env]
+    creds_file = CONFIG["google_sheets"]["creds_file"]
 
-    # optional CSV dump
-    csv_file = f"explore_{args.env}_{tab_name}.csv"
-    df.to_csv(csv_file, index=False)
-    print("CSV →", csv_file)
+    upload_df_to_gsheet(df, spreadsheet_name, creds_file)
 
 if __name__ == "__main__":
     main()
