@@ -57,10 +57,10 @@ def extract_insights(driver, url, date_range, xpaths):
         page_url = driver.current_url  # Capture current page URL
         
         insights_data.append({
-            "date_range": date_range,
-            "Insight": insight_name,
-            "Value": value,
-            "Page_URL": page_url,
+            "range": date_range,
+            "figure": insight_name,
+            "value": value,
+            "url": page_url,
             "collection_time": collection_time
         })
     

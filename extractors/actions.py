@@ -58,10 +58,10 @@ def extract_actions(driver, url, date_range, xpaths):
         page_url = driver.current_url  # Capture current page URL
         
         actions_data.append({
-            "date_range": date_range,
-            "strategy": strategy,
+            "range": date_range,
+            "figure": strategy,
             "value": value,
-            "Original_URL": page_url,
+            "url": page_url,
             "collection_time": collection_time
         })
     
