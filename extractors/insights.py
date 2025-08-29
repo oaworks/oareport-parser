@@ -9,10 +9,13 @@ from selenium.webdriver.support import expected_conditions as EC
 import pandas as pd
 import time
 from datetime import datetime
-from extractors.utils import make_id
 
-# Allow import from parent directory for Google Sheets export
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+# Ensure parent directory is on sys.path for local package imports
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if ROOT not in sys.path:
+    sys.path.insert(0, ROOT)
+
+from extractors.utils import make_id
 from export.google_sheets import upload_df_to_gsheet
 
 # Load configuration from a YAML file
