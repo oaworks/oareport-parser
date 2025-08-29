@@ -22,7 +22,7 @@ if ROOT not in sys.path:
 from extractors.utils import make_id
 from export.google_sheets import upload_df_to_daily_gsheet_named
 
-# Map CLI env to env tag (nomenclature)
+# Map CLI env to env tag
 ENV_TAG_MAP = {
     "staging": "api",
     "dev": "beta",
@@ -189,7 +189,7 @@ def main():
     # Generate one Google Sheet per day, named {envTag}_{section}_parsed_data__YYYY-MM-DD
     # Read creds + per-env Drive folder ID from config
     creds_file = CONFIG["google_sheets"]["creds_file"]
-    folder_id  = CONFIG["google_sheets"]["folders"]["explore"][args.env]  # ensure exists in settings.yaml
+    folder_id  = CONFIG["google_sheets"]["folder_id"]
     env_tag    = ENV_TAG_MAP[args.env]
 
     upload_df_to_daily_gsheet_named(
