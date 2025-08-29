@@ -9,6 +9,7 @@ from selenium.webdriver.support import expected_conditions as EC
 import pandas as pd
 import time
 from datetime import datetime
+from extractors.utils import make_id
 
 # Allow import from parent directory for Google Sheets export
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -56,13 +57,15 @@ def extract_insights(driver, url, date_range, xpaths):
         collection_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")  # Human-readable timestamp
         page_url = driver.current_url  # Capture current page URL
         
-        insights_data.append({
+        row = {
             "range": date_range,
             "figure": insight_name,
             "value": value,
             "url": page_url,
-            "collection_time": collection_time
-        })
+            "collection_time": collection_time,
+        }
+        row["id"] = make_id(row["range"], row["figure"], "insights", row["url"])
+        insights_data.append(row)
     
     return insights_data
 
@@ -113,6 +116,7 @@ def main():
     output_file = f"insights_{args.env}_data.csv"
     df = pd.DataFrame(insights_data)
     df.to_csv(output_file, index=False)
+    df = df[["range", "figure", "value", "url", "collection_time", "id"]]
     print(f"Scraped {len(insights_data)} rows total.")
     print(f"Data saved to {output_file}")
 

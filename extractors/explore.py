@@ -9,7 +9,8 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import StaleElementReferenceException   # ← added
+from selenium.common.exceptions import StaleElementReferenceException
+from extractors.utils import make_id
 
 # Allow import from parent directory for Google Sheets export
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -126,13 +127,16 @@ def scrape_explore(env):
                 for metric, val in r.items():
                     if metric == year_col:
                         continue
-                    out_rows.append({
+                    figure = f"{metric} {label_suffix}"
+                    row = {
                         "range": yr,
-                        "figure": f"{metric} {label_suffix}",
+                        "figure": figure,
                         "value": val,
                         "url": url,
-                        "collection_time": ts
-                    })
+                        "collection_time": ts,
+                    }
+                    row["id"] = make_id(row["range"], row["figure"], "explore", row["url"])
+                    out_rows.append(row)
 
         # --- 4. Normal publications view ------------------------------------------------ #
         try:
@@ -164,6 +168,7 @@ def main():
     args = parser.parse_args()
 
     df = scrape_explore(args.env)
+    df = df[["range", "figure", "value", "url", "collection_time", "id"]]
     output_file = f"explore_{args.env}_data.csv"
     df.to_csv(output_file, index=False)
     print(f"Data saved to {output_file}")
