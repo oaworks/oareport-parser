@@ -127,10 +127,10 @@ def scrape_explore(env):
                     if metric == year_col:
                         continue
                     out_rows.append({
-                        "date_range"     : yr,
-                        "figure"         : f"{metric} {label_suffix}",
-                        "value"          : val,
-                        "Page_URL"       : url,
+                        "range": yr,
+                        "figure": f"{metric} {label_suffix}",
+                        "value": val,
+                        "url": url,
                         "collection_time": ts
                     })
 
