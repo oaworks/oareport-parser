@@ -1,38 +1,33 @@
 import re, unicodedata
-ORG_RE = re.compile(r"https?://(?:[^/]*\.)?oa\.report/([^/?#]+)", re.I)
+ORG_RE = re.compile(r"https?://(?:(?:dev|staging|migration)\.)?oa\.report/([^/?#]+)", re.I)
 
 def _slugify(s: str) -> str:
-    s = unicodedata.normalize("NFKD", s or "").encode("ascii", "ignore").decode().lower()
-    s = re.sub(r"[^a-z0-9]+", "-", s).strip("-")
-    return re.sub(r"-{2,}", "-", s)
+    s = (s or "").strip().lower()
+    s = s.replace("—", "-").replace("–", "-")
+    s = re.sub(r"[^a-z0-9\- ]+", "", s)      # keep letters, digits, space, dash
+    s = re.sub(r"\s+", "-", s)               # spaces become dashes
+    s = re.sub(r"-{2,}", "-", s).strip("-")  # collapse and trim dashes
+    return s
 
 def _section_key(section: str, figure: str) -> str:
     """
-    Derive a section key from the base section and any parenthetical qualifier
-    present in the figure text.
-
-    Rules:
-    - If figure contains '(...)', slugify the inside.
-    - If that slug starts with a known section prefix ('explore', 'actions', 'insights'),
-      return it as-is (e.g. 'explore-preprints').
-    - Otherwise, return '{base}-{qualifier}' (e.g. 'actions-email-nudges').
-    - If no qualifier, return the base section.
+    Derive a clean section label from the figure’s trailing parentheses if present.
+    Normalises:
+      (insight) -> insights
+      (action)  -> actions
+      (Explore …) -> explore[-…]
+    Falls back to the provided section.
     """
-    base = (section or "").lower()
-    m = re.search(r"\(([^)]*)\)", figure or "")
-    if not m:
-        return base
-
-    inside = m.group(1).replace("–", "-").replace("—", "-")
-    qual = _slugify(inside)
-
-    if not qual:
-        return base
-
-    if qual.startswith(("explore", "actions", "insights")):
-        return qual
-
-    return f"{base}-{qual}"
+    m = re.search(r"\(([^)]*)\)\s*$", figure or "", flags=re.I)
+    if m:
+        inside = _slugify(m.group(1))  # e.g. "insight", "action", "explore-preprints"
+        if inside in {"insight", "insights"}:
+            return "insights"
+        if inside in {"action", "actions"}:
+            return "actions"
+        if inside.startswith("explore"):
+            return inside            # "explore" or "explore-preprints"
+    return (section or "").strip().lower()
 
 
 def make_id(date_range: str, figure: str, section: str, url: str) -> str:
@@ -48,4 +43,4 @@ def make_id(date_range: str, figure: str, section: str, url: str) -> str:
     """
     base_fig = re.sub(r"\s*\([^)]*\)\s*$", "", figure or "").strip()  # strip trailing (... )
     org = (ORG_RE.search(url or "") or [None, ""])[1].lower()
-    return f"{date_range}_{_slugify(base_fig)}_{_section_key(section, figure)}_{org}"
+    return f"{_slugify(date_range)}_{_slugify(base_fig)}_{_section_key(section, figure)}_{org}"
