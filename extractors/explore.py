@@ -183,9 +183,6 @@ def main():
 
     df = scrape_explore(args.env)
     df = df[["range", "figure", "value", "url", "collection_time", "id"]]
-    output_file = f"explore_{args.env}_data.csv"
-    df.to_csv(output_file, index=False)
-    print(f"Data saved to {output_file}")
 
     # Generate one Google Sheet per day, named {envTag}_{section}_parsed_data__YYYY-MM-DD
     # Read creds + per-env Drive folder ID from config

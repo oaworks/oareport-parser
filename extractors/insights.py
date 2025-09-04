@@ -133,11 +133,6 @@ def main():
 
     print(f"Scraped {len(insights_data)} rows total.")
 
-    # Write a local CSV
-    output_file = f"insights_{args.env}_data.csv"
-    df.to_csv(output_file, index=False)
-    print(f"Data saved to {output_file}")
-
     # Generate one Google Sheet per day, named {envTag}_{section}_parsed_data__YYYY-MM-DD
     # Read creds + per-env Drive folder ID from config
     creds_file = CONFIG["google_sheets"]["creds_file"]

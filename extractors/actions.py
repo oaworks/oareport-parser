@@ -126,11 +126,8 @@ def main():
     args = parser.parse_args()
 
     actions_data = scrape_actions(args.env)
-    output_file = f"actions_{args.env}_data.csv"
     df = pd.DataFrame(actions_data)
     df = df[["range", "figure", "value", "url", "collection_time", "id"]]
-    df.to_csv(output_file, index=False)
-    print(f"Data saved to {output_file}")
 
     # Generate one Google Sheet per day, named {envTag}_{section}_parsed_data__YYYY-MM-DD
     # Read creds + per-env Drive folder ID from config
