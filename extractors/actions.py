@@ -12,7 +12,6 @@ from selenium.webdriver.support import expected_conditions as EC
 import pandas as pd
 import time
 from datetime import datetime
-from extractors.utils import write_daily_csv
 
 # Ensure parent directory is on sys.path for local package imports
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -20,6 +19,7 @@ if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
 from extractors.utils import make_id
+from extractors.utils import write_daily_csv
 from export.google_sheets import upload_df_to_daily_gsheet_named
 
 # Map CLI env to env tag
