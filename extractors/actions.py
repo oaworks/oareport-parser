@@ -12,6 +12,7 @@ from selenium.webdriver.support import expected_conditions as EC
 import pandas as pd
 import time
 from datetime import datetime
+from extractors.utils import write_daily_csv
 
 # Ensure parent directory is on sys.path for local package imports
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -121,7 +122,7 @@ def scrape_actions(env):
 # Run the scraper and export to CSV
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--env", choices=["staging", "dev"], required=True, help="Specify environment: staging or dev")
+    parser.add_argument("--env", choices=["staging", "dev", "migration"], required=True)
     args = parser.parse_args()
 
     actions_data = scrape_actions(args.env)
@@ -135,7 +136,10 @@ def main():
     # Read creds + per-env Drive folder ID from config
     creds_path = CONFIG["google_sheets"]["creds_file"]
     folder_id  = CONFIG["google_sheets"]["folder_id"]
-    env_tag    = ENV_TAG_MAP[args.env]
+
+    # Map CLI env to env tag
+    env_tag = ENV_TAG_MAP[args.env]
+    write_daily_csv(df=df, env_tag=env_tag, section="actions", out_dir="snapshots", tz="Europe/London")
 
     upload_df_to_daily_gsheet_named(
         df=df,

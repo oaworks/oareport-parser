@@ -1,3 +1,6 @@
+from pathlib import Path
+from datetime import datetime
+import pytz
 import re, unicodedata
 ORG_RE = re.compile(r"https?://(?:(?:dev|staging|migration)\.)?oa\.report/([^/?#]+)", re.I)
 
@@ -44,3 +47,20 @@ def make_id(date_range: str, figure: str, section: str, url: str) -> str:
     base_fig = re.sub(r"\s*\([^)]*\)\s*$", "", figure or "").strip()  # strip trailing (... )
     org = (ORG_RE.search(url or "") or [None, ""])[1].lower()
     return f"{_slugify(date_range)}_{_slugify(base_fig)}_{_section_key(section, figure)}_{org}"
+
+def _today_str(tz_name="Europe/London"):
+    tz = pytz.timezone(tz_name)
+    return datetime.now(tz).strftime("%Y-%m-%d")
+
+def write_daily_csv(df, env_tag: str, section: str, out_dir: str = "snapshots", tz: str = "Europe/London"):
+    """
+    Writes a CSV named: {env_tag}_{section}_parsed_data__{yyyy-mm-dd}.csv
+    Columns are preserved exactly as in df.
+    """
+    Path(out_dir).mkdir(parents=True, exist_ok=True)
+    date_str = _today_str(tz)
+    fname = f"{env_tag}_{section}_parsed_data__{date_str}.csv"
+    fpath = Path(out_dir) / fname
+    df.to_csv(fpath, index=False)
+    print(f"Wrote daily CSV: {fpath} ({len(df)} rows)")
+    return str(fpath)

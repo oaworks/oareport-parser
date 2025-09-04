@@ -12,6 +12,7 @@ from selenium.webdriver.support import expected_conditions as EC
 import pandas as pd
 import time
 from datetime import datetime
+from extractors.utils import write_daily_csv
 
 # Ensure parent directory is on sys.path for local package imports
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -123,7 +124,7 @@ def scrape_insights(env):
 # Run the scraper and export
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--env", choices=["staging", "dev"], required=True, help="Specify environment: staging or dev")
+    parser.add_argument("--env", choices=["staging", "dev", "migration"], required=True)
     args = parser.parse_args()
 
     insights_data = scrape_insights(args.env)
@@ -144,6 +145,7 @@ def main():
 
     # Map CLI env to env tag
     env_tag = ENV_TAG_MAP[args.env]
+    write_daily_csv(df=df, env_tag=env_tag, section="insights", out_dir="snapshots", tz="Europe/London")
 
     # Create/overwrite the daily sheet inside the folder (Europe/London day)
     upload_df_to_daily_gsheet_named(

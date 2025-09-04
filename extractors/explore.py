@@ -13,6 +13,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import StaleElementReferenceException
+from extractors.utils import write_daily_csv
 
 # Ensure parent directory is on sys.path for local package imports
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -177,7 +178,7 @@ def scrape_explore(env):
 # --------------------------------------------------------------------------- #
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--env", choices=["staging", "dev"], required=True)
+    parser.add_argument("--env", choices=["staging", "dev", "migration"], required=True)
     args = parser.parse_args()
 
     df = scrape_explore(args.env)
@@ -189,8 +190,11 @@ def main():
     # Generate one Google Sheet per day, named {envTag}_{section}_parsed_data__YYYY-MM-DD
     # Read creds + per-env Drive folder ID from config
     creds_file = CONFIG["google_sheets"]["creds_file"]
-    folder_id  = CONFIG["google_sheets"]["folder_id"]
-    env_tag    = ENV_TAG_MAP[args.env]
+    folder_id = CONFIG["google_sheets"]["folder_id"]
+
+    # Map CLI env to env tag
+    env_tag = ENV_TAG_MAP[args.env]
+    write_daily_csv(df=df, env_tag=env_tag, section="explore", out_dir="snapshots", tz="Europe/London")
 
     upload_df_to_daily_gsheet_named(
         df=df,
