@@ -41,11 +41,11 @@ jobs:
       - name: Write credentials & settings (rolling)
         env:
           GOOGLE_CREDS_JSON: ${{ secrets.GOOGLE_CREDS_JSON }}
-          SETTINGS_YAML_ROLLING: ${{ secrets.SETTINGS_YAML_ROLLING }}
+          SETTINGS_YAML: ${{ secrets.SETTINGS_YAML }}
         run: |
           mkdir -p config
           printf '%s' "$GOOGLE_CREDS_JSON" > config/google_creds.json
-          printf '%s' "$SETTINGS_YAML_ROLLING" > config/settings.yaml
+          printf '%s' "$SETTINGS_YAML" > config/settings.yaml
 
       # Run all three extractors for staging + dev, legacy "rolling" behaviour
       - name: Run insights (staging)
@@ -93,11 +93,11 @@ jobs:
       - name: Write credentials & settings (daily snapshots)
         env:
           GOOGLE_CREDS_JSON: ${{ secrets.GOOGLE_CREDS_JSON }}
-          SETTINGS_YAML_DAILY: ${{ secrets.SETTINGS_YAML_DAILY }}
+          SETTINGS_YAML: ${{ secrets.SETTINGS_YAML }}
         run: |
           mkdir -p config
           printf '%s' "$GOOGLE_CREDS_JSON" > config/google_creds.json
-          printf '%s' "$SETTINGS_YAML_DAILY" > config/settings.yaml
+          printf '%s' "$SETTINGS_YAML" > config/settings.yaml
 
       # Run all three extractors for staging + dev, new "daily snapshot" behaviour
       - name: Run insights (staging)
