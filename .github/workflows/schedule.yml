@@ -1,115 +1,51 @@
-name: Daily OA.Report Parsing (dual job = rolling + daily snapshots)
+name: Daily OA.Report Parsing
 
 on:
   schedule:
     - cron: '0 0 * * *'  # every day at midnight UTC
-  workflow_dispatch: {}  # allows manual runs from GitHub UI
-
-concurrency:
-  group: "${{ github.workflow }}-${{ github.run_id }}"
-  cancel-in-progress: false
+  workflow_dispatch:  # allows manual runs from GitHub UI
 
 jobs:
-  rolling-sheets-main:
-    name: Rolling sheets (legacy, designed for "Statistics QA V2")
+  run-parsers:
     runs-on: ubuntu-latest
-    env:
-      TZ: Europe/London
 
     steps:
-      - name: Checkout main
-        uses: actions/checkout@v4
-        with:
-          ref: main
+      - name: Checkout repo
+        uses: actions/checkout@v3
 
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
+      - name: Set up Python
+        uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
-          cache: 'pip'
-
-      - name: Install Google Chrome (for Selenium)
-        uses: browser-actions/setup-chrome@v1
-        with:
-          chrome-version: stable
+          python-version: '3.9'
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Write credentials & settings (rolling)
+      - name: Set up credentials
         env:
           GOOGLE_CREDS_JSON: ${{ secrets.GOOGLE_CREDS_JSON }}
-          SETTINGS_YAML_ROLLING: ${{ secrets.SETTINGS_YAML_ROLLING }}
+          SETTINGS_YAML: ${{ secrets.SETTINGS_YAML }}
         run: |
           mkdir -p config
-          printf '%s' "$GOOGLE_CREDS_JSON" > config/google_creds.json
-          printf '%s' "$SETTINGS_YAML_ROLLING" > config/settings.yaml
+          echo "$GOOGLE_CREDS_JSON" > config/google_creds.json
+          echo "$SETTINGS_YAML" > config/settings.yaml
 
-      # Run all three extractors for staging + dev, legacy "rolling" behaviour
-      - name: Run insights (staging)
-        run: python -m extractors.insights --env staging
-      - name: Run actions (staging)
-        run: python -m extractors.actions  --env staging
-      - name: Run explore (staging)
-        run: python -m extractors.explore  --env staging
+      - name: Run insights parser on live API (staging)
+        run: python extractors/insights.py --env staging
 
-      - name: Run insights (dev)
-        run: python -m extractors.insights --env dev
-      - name: Run actions (dev)
-        run: python -m extractors.actions  --env dev
-      - name: Run explore (dev)
-        run: python -m extractors.explore  --env dev
+      - name: Run actions parser on live API (staging)
+        run: python extractors/actions.py --env staging
 
-  daily-snapshots:
-    name: Daily snapshots (from the 3476-migration-parser branch, designed for "Snapshot Delta")
-    runs-on: ubuntu-latest
-    env:
-      TZ: Europe/London
+      - name: Run explore parser on live API (staging)
+        run: python extractors/explore.py --env staging
 
-    steps:
-      - name: Checkout branch 3476
-        uses: actions/checkout@v4
-        with:
-          ref: 3476-migration-parser
+      - name: Run insights parser on beta API (dev)
+        run: python extractors/insights.py --env dev
 
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          cache: 'pip'
+      - name: Run actions parser on beta API (dev)
+        run: python extractors/actions.py --env dev
 
-      - name: Install Google Chrome (for Selenium)
-        uses: browser-actions/setup-chrome@v1
-        with:
-          chrome-version: stable
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
-      - name: Write credentials & settings (daily snapshots)
-        env:
-          GOOGLE_CREDS_JSON: ${{ secrets.GOOGLE_CREDS_JSON }}
-          SETTINGS_YAML_DAILY: ${{ secrets.SETTINGS_YAML_DAILY }}
-        run: |
-          mkdir -p config
-          printf '%s' "$GOOGLE_CREDS_JSON" > config/google_creds.json
-          printf '%s' "$SETTINGS_YAML_DAILY" > config/settings.yaml
-
-      # Run all three extractors for staging + dev, new "daily snapshot" behaviour
-      - name: Run insights (staging)
-        run: python -m extractors.insights --env staging
-      - name: Run actions (staging)
-        run: python -m extractors.actions  --env staging
-      - name: Run explore (staging)
-        run: python -m extractors.explore  --env staging
-
-      - name: Run insights (dev)
-        run: python -m extractors.insights --env dev
-      - name: Run actions (dev)
-        run: python -m extractors.actions  --env dev
-      - name: Run explore (dev)
-        run: python -m extractors.explore  --env dev
+      - name: Run explore parser on beta API (dev)
+        run: python extractors/explore.py --env dev
