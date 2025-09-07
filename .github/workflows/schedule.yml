@@ -1,4 +1,4 @@
-name: Daily OA.Report Parsing (dual job = rolling + daily snapshots)
+name: Daily OA.Report Parsing
 
 on:
   schedule:
