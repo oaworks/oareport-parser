@@ -112,7 +112,7 @@ def scrape_actions(env):
 # Run the scraper and export to CSV
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--env", choices=["staging", "dev"], required=True, help="Specify environment: staging or dev")
+    parser.add_argument("--env", choices=["staging", "dev", "migration"], required=True, help="Specify environment: staging, dev, migration")
     args = parser.parse_args()
 
     actions_data = scrape_actions(args.env)
