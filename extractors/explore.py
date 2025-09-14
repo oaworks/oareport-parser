@@ -168,7 +168,8 @@ def scrape_explore(env):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--env", choices=["staging", "dev", "migration"], required=True, help="Specify environment: staging, dev, migration")
-
+    args = parser.parse_args()
+    
     df = scrape_explore(args.env)
     df = df[["range", "figure", "value", "url", "collection_time", "id"]]
     output_file = f"explore_{args.env}_data.csv"
