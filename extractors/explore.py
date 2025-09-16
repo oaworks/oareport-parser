@@ -53,18 +53,40 @@ def extract_table_data(driver):
         EC.presence_of_element_located((By.ID, "explore_table"))
     )
 
+    # Wait until either the table header or a "No results found" message appears.
+    try:
+        WebDriverWait(driver, 10).until(
+            lambda d: (
+                d.find_elements(By.XPATH, "//table[@id='explore_table']//thead/tr")
+                or d.find_elements(By.XPATH, "//table[@id='explore_table']//tbody//td[contains(., 'No results found')]")
+                or d.find_elements(By.XPATH, "//table[@id='explore_table']//tbody/tr/td")
+            )
+        )
+    except TimeoutException:
+        return []
+
+    # If the table explicitly reports no results, bail out early.
+    no_results = driver.find_elements(
+        By.XPATH, "//table[@id='explore_table']//tbody//td[contains(., 'No results found')]"
+    )
+    if no_results:
+        return []
+
     # Get headers
-    header_row = driver.find_element(By.XPATH, "//table[@id='explore_table']//thead/tr")
+    header_rows = driver.find_elements(By.XPATH, "//table[@id='explore_table']//thead/tr")
+    if not header_rows:
+        # Header row may be missing when the table is empty.
+        return []
+    header_row = header_rows[0]
     headers = [th.text.strip() for th in header_row.find_elements(By.TAG_NAME, "th")]
 
-    # Get body rows
-    body_rows = driver.find_elements(By.XPATH, "//table[@id='explore_table']//tbody/tr")
+    # Get body rows; if none, this will just return []
     data = []
-    for row in body_rows:
+    for row in driver.find_elements(By.XPATH, "//table[@id='explore_table']//tbody/tr"):
         cells = row.find_elements(By.TAG_NAME, "td")
         values = [cell.text.strip() for cell in cells]
         if len(values) != len(headers):
-            print(f"Skipping row: {values} (expected {len(headers)} columns)")
+            # skip "No results found" row or malformed rows
             continue
         data.append(dict(zip(headers, values)))
 
@@ -155,8 +177,9 @@ def scrape_explore(env):
         # --- 4. Normal publications view ------------------------------------------------ #
         try:
             tbl = extract_table_data(driver)
-        except StaleElementReferenceException:
-            tbl = extract_table_data(driver)
+        except (StaleElementReferenceException, NoSuchElementException, TimeoutException):
+            print("[info] explore table missing/empty; skipping this URL")
+            tbl = []
         _flush_table(tbl, "(Explore)")
 
         # --- 5. Optional: Preprints view ------------------------------------------------ #
@@ -178,11 +201,18 @@ def scrape_explore(env):
 # --------------------------------------------------------------------------- #
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--env", choices=["staging", "dev", "migration"], required=True)
+    parser.add_argument("--env", choices=["staging", "dev", "migration"], required=True, help="Specify environment: staging, dev, migration")
     args = parser.parse_args()
 
     df = scrape_explore(args.env)
     df = df[["range", "figure", "value", "url", "collection_time", "id"]]
+    if df.empty:
+        print(f"[info] Explore: no rows for env={args.env}. Skipping CSV and Google Sheets upload.")
+        return
+
+    output_file = f"explore_{args.env}_data.csv"
+    df.to_csv(output_file, index=False)
+    print(f"Data saved to {output_file}")
 
     # Generate one Google Sheet per day, named {envTag}_{section}_parsed_data__YYYY-MM-DD
     # Read creds + per-env Drive folder ID from config

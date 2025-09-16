@@ -1,7 +1,7 @@
 from pathlib import Path
 from datetime import datetime
 import pytz
-import re, unicodedata
+import re
 ORG_RE = re.compile(r"https?://(?:(?:dev|staging|migration)\.)?oa\.report/([^/?#]+)", re.I)
 
 def _slugify(s: str) -> str:

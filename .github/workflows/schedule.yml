@@ -41,13 +41,13 @@ jobs:
       - name: Write credentials & settings (rolling)
         env:
           GOOGLE_CREDS_JSON: ${{ secrets.GOOGLE_CREDS_JSON }}
-          SETTINGS_YAML: ${{ secrets.SETTINGS_YAML }}
+          SETTINGS_YAML_ROLLING: ${{ secrets.SETTINGS_YAML_ROLLING }}
         run: |
           mkdir -p config
           printf '%s' "$GOOGLE_CREDS_JSON" > config/google_creds.json
-          printf '%s' "$SETTINGS_YAML" > config/settings.yaml
+          printf '%s' "$SETTINGS_YAML_ROLLING" > config/settings.yaml
 
-      # Run all three extractors for staging + dev, legacy "rolling" behaviour
+      # Run all three extractors for staging + dev + migration, legacy "rolling" behaviour
       - name: Run insights (staging)
         run: python -m extractors.insights --env staging
       - name: Run actions (staging)
@@ -93,13 +93,13 @@ jobs:
       - name: Write credentials & settings (daily snapshots)
         env:
           GOOGLE_CREDS_JSON: ${{ secrets.GOOGLE_CREDS_JSON }}
-          SETTINGS_YAML: ${{ secrets.SETTINGS_YAML }}
+          SETTINGS_YAML_DAILY: ${{ secrets.SETTINGS_YAML_DAILY }}
         run: |
           mkdir -p config
           printf '%s' "$GOOGLE_CREDS_JSON" > config/google_creds.json
-          printf '%s' "$SETTINGS_YAML" > config/settings.yaml
+          printf '%s' "$SETTINGS_YAML_DAILY" > config/settings.yaml
 
-      # Run all three extractors for staging + dev, new "daily snapshot" behaviour
+      # Run all three extractors for staging + dev + migration, new "daily snapshot" behaviour
       - name: Run insights (staging)
         run: python -m extractors.insights --env staging
       - name: Run actions (staging)
@@ -113,3 +113,10 @@ jobs:
         run: python -m extractors.actions  --env dev
       - name: Run explore (dev)
         run: python -m extractors.explore  --env dev
+
+      - name: Run insights (migration)
+        run: python -m extractors.insights --env migration
+      - name: Run actions (migration)
+        run: python -m extractors.actions  --env migration
+      - name: Run explore (migration)
+        run: python -m extractors.explore  --env migration

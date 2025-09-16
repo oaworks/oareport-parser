@@ -71,7 +71,6 @@ def extract_insights(driver, url, date_range, xpaths):
 
         collection_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")  # Human-readable timestamp
         page_url = driver.current_url  # Capture current page URL
-
         row = {
             "range": date_range,
             "figure": insight_name,
@@ -81,7 +80,6 @@ def extract_insights(driver, url, date_range, xpaths):
         }
         row["id"] = make_id(row["range"], row["figure"], "insights", row["url"])
         insights_data.append(row)
-
     return insights_data
 
 # Main function to process all URLs
@@ -124,7 +122,7 @@ def scrape_insights(env):
 # Run the scraper and export
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--env", choices=["staging", "dev", "migration"], required=True)
+    parser.add_argument("--env", choices=["staging", "dev", "migration"], required=True, help="Specify environment: staging, dev, migration")
     args = parser.parse_args()
 
     insights_data = scrape_insights(args.env)
