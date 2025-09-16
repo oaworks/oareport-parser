@@ -6,6 +6,7 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import ElementClickInterceptedException
 import pandas as pd
 import time
 from datetime import datetime
@@ -37,6 +38,27 @@ def get_driver():
     options.add_argument("--window-size=1920,1080")
     driver = webdriver.Chrome(options=options)
     return driver
+
+def safe_click(driver, el, retries=3):
+    """Wait until clickable; if intercepted, brief pause + JS click fallback."""
+    for _ in range(retries):
+        try:
+            # ensure it’s visible & enabled first
+            WebDriverWait(driver, 10).until(EC.element_to_be_clickable(el))
+            driver.execute_script("arguments[0].scrollIntoView({block:'center'});", el)
+            el.click()
+            return
+        except ElementClickInterceptedException:
+            time.sleep(0.7)
+            try:
+                driver.execute_script("arguments[0].click();", el)
+                return
+            except Exception:
+                time.sleep(0.3)
+        except Exception:
+            time.sleep(0.3)
+    # last resort
+    driver.execute_script("arguments[0].click();", el)
 
 # Function to extract actions from a page
 def extract_actions(driver, url, date_range, xpaths):
@@ -92,14 +114,14 @@ def scrape_actions(env):
         
         # Extract actions for each date range
         for i, button in enumerate(year_buttons[:2]):
-            button.click()
+            safe_click(driver, button)
             time.sleep(CONFIG["delays"]["data_load"])
             date_range = button.text.strip()
             all_actions.extend(extract_actions(driver, url, date_range, xpaths))
         
         try:
             all_time_button = driver.find_element(By.XPATH, xpaths["all_time_button"])
-            all_time_button.click()
+            safe_click(driver, all_time_button)
             time.sleep(CONFIG["delays"]["data_load"])
             date_range = all_time_button.text.strip()
             all_actions.extend(extract_actions(driver, url, date_range, xpaths))
