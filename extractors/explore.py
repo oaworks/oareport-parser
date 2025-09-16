@@ -12,7 +12,7 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import StaleElementReferenceException
+from selenium.common.exceptions import StaleElementReferenceException, TimeoutException, NoSuchElementException
 
 # Ensure parent directory is on sys.path for local package imports
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -194,7 +194,10 @@ def scrape_explore(env):
             pass
 
     driver.quit()
-    return pd.DataFrame(out_rows)
+    return pd.DataFrame(
+        out_rows,
+        columns=["range", "figure", "value", "url", "collection_time", "id"]
+    )
 
 # --------------------------------------------------------------------------- #
 #  CLI entry point
