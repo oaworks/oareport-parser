@@ -210,10 +210,6 @@ def main():
         print(f"[info] Explore: no rows for env={args.env}. Skipping CSV and Google Sheets upload.")
         return
 
-    output_file = f"explore_{args.env}_data.csv"
-    df.to_csv(output_file, index=False)
-    print(f"Data saved to {output_file}")
-
     # Generate one Google Sheet per day, named {envTag}_{section}_parsed_data__YYYY-MM-DD
     # Read creds + per-env Drive folder ID from config
     creds_file = CONFIG["google_sheets"]["creds_file"]
