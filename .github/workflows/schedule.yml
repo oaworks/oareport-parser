@@ -47,20 +47,40 @@ jobs:
           printf '%s' "$GOOGLE_CREDS_JSON" > config/google_creds.json
           printf '%s' "$SETTINGS_YAML_ROLLING" > config/settings.yaml
 
-      # Run all three extractors for staging + dev + migration, legacy "rolling" behaviour
-      - name: Run insights (staging)
-        run: python -m extractors.insights --env staging
-      - name: Run actions (staging)
-        run: python -m extractors.actions  --env staging
-      - name: Run explore (staging)
-        run: python -m extractors.explore  --env staging
+      # Run all three extractors for staging + dev + migration, legacy "rolling" behaviour, as well as up to three retries 
+      - name: Run extractors (rolling)
+        shell: bash
+        run: |
+          set -euo pipefail
+          run_with_retry() {
+            local attempts=3
+            local delay=20
+            local cmd="$*"
+            for n in $(seq 1 "$attempts"); do
+              echo "::group::Attempt $n: $cmd"
+              if eval "$cmd"; then
+                echo "✔ Succeeded on attempt $n"
+                echo "::endgroup::"
+                return 0
+              fi
+              status=$?
+              echo "✖ Failed (exit $status). Retrying in ${delay}s..."
+              echo "::endgroup::"
+              sleep "$delay"
+              delay=$((delay*2))
+            done
+            echo "✖ Failed after $attempts attempts: $cmd"
+            return 1
+          }
 
-      - name: Run insights (dev)
-        run: python -m extractors.insights --env dev
-      - name: Run actions (dev)
-        run: python -m extractors.actions  --env dev
-      - name: Run explore (dev)
-        run: python -m extractors.explore  --env dev
+          EXTRACTORS=(insights actions explore)
+          ENVS=(staging dev)   # rolling
+
+          for env in "${ENVS[@]}"; do
+            for ex in "${EXTRACTORS[@]}"; do
+              run_with_retry python -m "extractors.${ex}" --env "${env}"
+            done
+          done
 
   daily-snapshots:
     name: Daily snapshots (from the 3476-migration-parser branch, designed for "Snapshot Delta")
@@ -99,24 +119,37 @@ jobs:
           printf '%s' "$GOOGLE_CREDS_JSON" > config/google_creds.json
           printf '%s' "$SETTINGS_YAML_DAILY" > config/settings.yaml
 
-      # Run all three extractors for staging + dev + migration, new "daily snapshot" behaviour
-      - name: Run insights (staging)
-        run: python -m extractors.insights --env staging
-      - name: Run actions (staging)
-        run: python -m extractors.actions  --env staging
-      - name: Run explore (staging)
-        run: python -m extractors.explore  --env staging
+      # Run all three extractors for staging + dev + migration, new "daily snapshot" behaviour, as well as up to three retries 
+      - name: Run extractors with retries (daily snapshots)
+        shell: bash
+        run: |
+          set -euo pipefail
+          run_with_retry() {
+            local attempts=3
+            local delay=20
+            local cmd="$*"
+            for n in $(seq 1 "$attempts"); do
+              echo "::group::Attempt $n: $cmd"
+              if eval "$cmd"; then
+                echo "✔ Succeeded on attempt $n"
+                echo "::endgroup::"
+                return 0
+              fi
+              status=$?
+              echo "✖ Failed (exit $status). Retrying in ${delay}s..."
+              echo "::endgroup::"
+              sleep "$delay"
+              delay=$((delay*2))
+            done
+            echo "✖ Failed after $attempts attempts: $cmd"
+            return 1
+          }
 
-      - name: Run insights (dev)
-        run: python -m extractors.insights --env dev
-      - name: Run actions (dev)
-        run: python -m extractors.actions  --env dev
-      - name: Run explore (dev)
-        run: python -m extractors.explore  --env dev
+          EXTRACTORS=(insights actions explore)
+          ENVS=(staging dev migration)  # daily
 
-      - name: Run insights (migration)
-        run: python -m extractors.insights --env migration
-      - name: Run actions (migration)
-        run: python -m extractors.actions  --env migration
-      - name: Run explore (migration)
-        run: python -m extractors.explore  --env migration
+          for env in "${ENVS[@]}"; do
+            for ex in "${EXTRACTORS[@]}"; do
+              run_with_retry python -m "extractors.${ex}" --env "${env}"
+            done
+          done
