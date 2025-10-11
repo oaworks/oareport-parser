@@ -116,17 +116,26 @@ def main():
     args = parser.parse_args()
 
     insights_data = scrape_insights(args.env)
+
+    # Shape to expected columns up front to avoid KeyError on empty
+    df = pd.DataFrame(
+        insights_data,
+        columns=["range", "figure", "value", "url", "collection_time", "id"],
+    )
+
+    print(f"Scraped {len(df)} rows total.")
+
+    if df.empty:
+        print(f"[info] Insights: no rows for env={args.env}. Skipping CSV and Google Sheets upload.")
+        return
+
     output_file = f"insights_{args.env}_data.csv"
-    df = pd.DataFrame(insights_data)
     df.to_csv(output_file, index=False)
-    df = df[["range", "figure", "value", "url", "collection_time", "id"]]
-    print(f"Scraped {len(insights_data)} rows total.")
     print(f"Data saved to {output_file}")
 
     # Upload to Google Sheets
     spreadsheet_name = CONFIG["google_sheets"]["sheets"]["insights"][args.env]
     creds_file = CONFIG["google_sheets"]["creds_file"]
-
     upload_df_to_gsheet(df, spreadsheet_name, creds_file)
 
 if __name__ == "__main__":
