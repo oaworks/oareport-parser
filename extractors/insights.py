@@ -119,22 +119,7 @@ def main():
     output_file = f"insights_{args.env}_data.csv"
     df = pd.DataFrame(insights_data)
     df.to_csv(output_file, index=False)
-    required_columns = ["range", "figure", "value", "url", "collection_time", "id"]
-
-    # Check for empty DataFrame or missing columns
-    if df.empty:
-        print("Warning: No data was scraped. The DataFrame is empty.")
-        # Skip upload or exit
-        return
-
-    missing = [col for col in required_columns if col not in df.columns]
-    if missing:
-        print(f"Error: Missing required columns: {missing}")
-        print(f"Available columns: {df.columns.tolist()}")
-        # Skip upload or exit
-        return
-
-    df = df[required_columns]
+    df = df[["range", "figure", "value", "url", "collection_time", "id"]]
     print(f"Scraped {len(insights_data)} rows total.")
     print(f"Data saved to {output_file}")
 
