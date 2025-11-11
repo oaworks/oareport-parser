@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# explore.py
+
 import os
 import sys
 import yaml
@@ -11,14 +14,21 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import StaleElementReferenceException, TimeoutException, NoSuchElementException
 
-
 # Ensure parent directory is on sys.path for local package imports
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
 from extractors.utils import make_id
-from export.google_sheets import upload_df_to_gsheet
+from extractors.utils import write_daily_csv
+from export.google_sheets import upload_df_to_daily_gsheet_named
+
+# Map CLI env to env tag
+ENV_TAG_MAP = {
+    "staging": "api",
+    "dev": "beta",
+    "migration": "migration",
+}
 
 # --------------------------------------------------------------------------- #
 #  Configuration
@@ -94,9 +104,9 @@ def scrape_explore(env):
         • if the “Preprints” radio is present, click it, re-extract table
     Returns a flattened DataFrame with one metric per row.
     """
-    urls         = CONFIG.get("explore_urls", {}).get(env, [])
-    xpaths       = CONFIG["xpaths"]
-    delay_cfg    = CONFIG["delays"]
+    urls          = CONFIG.get("explore_urls", {}).get(env, [])
+    xpaths        = CONFIG["xpaths"]
+    delay_cfg     = CONFIG["delays"]
     years_to_keep = CONFIG["explore"]["years_to_keep"]
 
     driver   = get_driver()
@@ -184,7 +194,10 @@ def scrape_explore(env):
             pass
 
     driver.quit()
-    return pd.DataFrame(out_rows)
+    return pd.DataFrame(
+        out_rows,
+        columns=["range", "figure", "value", "url", "collection_time", "id"]
+    )
 
 # --------------------------------------------------------------------------- #
 #  CLI entry point
@@ -200,14 +213,23 @@ def main():
         print(f"[info] Explore: no rows for env={args.env}. Skipping CSV and Google Sheets upload.")
         return
 
-    output_file = f"explore_{args.env}_data.csv"
-    df.to_csv(output_file, index=False)
-    print(f"Data saved to {output_file}")
-
-    # Upload to Google Sheets
-    spreadsheet_name = CONFIG["google_sheets"]["sheets"]["explore"][args.env]
+    # Generate one Google Sheet per day, named {envTag}_{section}_parsed_data__YYYY-MM-DD
+    # Read creds + per-env Drive folder ID from config
     creds_file = CONFIG["google_sheets"]["creds_file"]
-    upload_df_to_gsheet(df, spreadsheet_name, creds_file)
+    folder_id = CONFIG["google_sheets"]["folder_id"]
+
+    # Map CLI env to env tag
+    env_tag = ENV_TAG_MAP[args.env]
+    write_daily_csv(df=df, env_tag=env_tag, section="explore", out_dir="snapshots", tz="Europe/London")
+
+    upload_df_to_daily_gsheet_named(
+        df=df,
+        env_tag=env_tag,
+        section="explore",
+        folder_id=folder_id,
+        creds_path=creds_file,
+        tz="Europe/London",
+    )
 
 if __name__ == "__main__":
     main()
