@@ -26,8 +26,7 @@ from export.google_sheets import upload_df_to_daily_gsheet_named
 # Map CLI env to env tag
 ENV_TAG_MAP = {
     "staging": "api",
-    "dev": "beta",
-    "migration": "migration",
+    "dev": "beta"
 }
 
 # Load configuration from a YAML file
@@ -142,12 +141,19 @@ def scrape_actions(env):
 # Run the scraper and export to CSV
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--env", choices=["staging", "dev", "migration"], required=True, help="Specify environment: staging, dev, migration")
+    parser.add_argument("--env", choices=["staging", "dev"], required=True,
+                        help="Specify environment: staging, dev")
     args = parser.parse_args()
 
     actions_data = scrape_actions(args.env)
-    df = pd.DataFrame(actions_data)
-    df = df[["range", "figure", "value", "url", "collection_time", "id"]]
+    df = pd.DataFrame(
+        actions_data,
+        columns=["range", "figure", "value", "url", "collection_time", "id"],
+    )
+
+    if df.empty:
+        print(f"[info] Actions: no rows for env={args.env}. Skipping CSV and Google Sheets upload.")
+        return
 
     # Generate one Google Sheet per day, named {envTag}_{section}_parsed_data__YYYY-MM-DD
     # Read creds + per-env Drive folder ID from config
@@ -155,8 +161,14 @@ def main():
     folder_id  = CONFIG["google_sheets"]["folder_id"]
 
     # Map CLI env to env tag
+    ENV_TAG_MAP = {"staging": "api", "dev": "beta"}
     env_tag = ENV_TAG_MAP[args.env]
-    write_daily_csv(df=df, env_tag=env_tag, section="actions", out_dir="snapshots", tz="Europe/London")
+
+    from extractors.utils import write_daily_csv
+    from export.google_sheets import upload_df_to_daily_gsheet_named
+
+    write_daily_csv(df=df, env_tag=env_tag, section="actions",
+                    out_dir="snapshots", tz="Europe/London")
 
     upload_df_to_daily_gsheet_named(
         df=df,

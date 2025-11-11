@@ -79,7 +79,7 @@ def _gspread_client(creds):
 
 def upload_df_to_daily_gsheet_named(
     df: pd.DataFrame,
-    env_tag: str,                 # "api" | "beta" | "migration"
+    env_tag: str,                 # "api" | "beta"
     section: str,                 # "insights" | "explore" | "actions"
     folder_id: str,               # Google Drive folder ID
     creds_path: str,

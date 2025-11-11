@@ -2,7 +2,7 @@ from pathlib import Path
 from datetime import datetime
 import pytz
 import re
-ORG_RE = re.compile(r"https?://(?:(?:dev|staging|migration)\.)?oa\.report/([^/?#]+)", re.I)
+ORG_RE = re.compile(r"https?://(?:(?:dev|staging)\.)?oa\.report/([^/?#]+)", re.I)
 
 def _slugify(s: str) -> str:
     s = (s or "").strip().lower()

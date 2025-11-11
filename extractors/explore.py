@@ -26,8 +26,7 @@ from export.google_sheets import upload_df_to_daily_gsheet_named
 # Map CLI env to env tag
 ENV_TAG_MAP = {
     "staging": "api",
-    "dev": "beta",
-    "migration": "migration",
+    "dev": "beta"
 }
 
 # --------------------------------------------------------------------------- #
@@ -204,7 +203,41 @@ def scrape_explore(env):
 # --------------------------------------------------------------------------- #
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--env", choices=["staging", "dev", "migration"], required=True, help="Specify environment: staging, dev, migration")
+    parser.add_argument("--env", choices=["staging", "dev"], required=True,
+                        help="Specify environment: staging, dev")
+    args = parser.parse_args()
+
+    df = scrape_explore(args.env)
+    # Keep only the expected columns and handle empty safely
+    if df.empty:
+        print(f"[info] Explore: no rows for env={args.env}. Skipping CSV and Google Sheets upload.")
+        return
+
+    df = df[["range", "figure", "value", "url", "collection_time", "id"]]
+
+    creds_file = CONFIG["google_sheets"]["creds_file"]
+    folder_id = CONFIG["google_sheets"]["folder_id"]
+
+    ENV_TAG_MAP = {"staging": "api", "dev": "beta"}
+    env_tag = ENV_TAG_MAP[args.env]
+
+    from extractors.utils import write_daily_csv
+    from export.google_sheets import upload_df_to_daily_gsheet_named
+
+    write_daily_csv(df=df, env_tag=env_tag, section="explore",
+                    out_dir="snapshots", tz="Europe/London")
+
+    upload_df_to_daily_gsheet_named(
+        df=df,
+        env_tag=env_tag,
+        section="explore",
+        folder_id=folder_id,
+        creds_path=creds_file,
+        tz="Europe/London",
+    )
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--env", choices=["staging", "dev"], required=True, help="Specify environment: staging, dev")
     args = parser.parse_args()
 
     df = scrape_explore(args.env)
