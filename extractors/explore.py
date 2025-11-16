@@ -236,33 +236,5 @@ def main():
         tz="Europe/London",
     )
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--env", choices=["staging", "dev"], required=True, help="Specify environment: staging, dev")
-    args = parser.parse_args()
-
-    df = scrape_explore(args.env)
-    df = df[["range", "figure", "value", "url", "collection_time", "id"]]
-    if df.empty:
-        print(f"[info] Explore: no rows for env={args.env}. Skipping CSV and Google Sheets upload.")
-        return
-
-    # Generate one Google Sheet per day, named {envTag}_{section}_parsed_data__YYYY-MM-DD
-    # Read creds + per-env Drive folder ID from config
-    creds_file = CONFIG["google_sheets"]["creds_file"]
-    folder_id = CONFIG["google_sheets"]["folder_id"]
-
-    # Map CLI env to env tag
-    env_tag = ENV_TAG_MAP[args.env]
-    write_daily_csv(df=df, env_tag=env_tag, section="explore", out_dir="snapshots", tz="Europe/London")
-
-    upload_df_to_daily_gsheet_named(
-        df=df,
-        env_tag=env_tag,
-        section="explore",
-        folder_id=folder_id,
-        creds_path=creds_file,
-        tz="Europe/London",
-    )
-
 if __name__ == "__main__":
     main()
